@@ -17,7 +17,7 @@ export default function TermsOfUse() {
 
       <header className="mm-page-header">
         <h1>Terms of Use</h1>
-        <p className="doc-updated">Last updated: October 5, 2026</p>
+        <p className="doc-updated">Last updated: October 6, 2026</p>
       </header>
 
       {/* Wellness disclaimer: always open, never collapsed */}
@@ -42,8 +42,8 @@ export default function TermsOfUse() {
           <P>To the fullest extent permitted by law, MonkeyMind and its creators are not liable for any injury, loss or damage, direct or indirect, arising from your use of, or inability to use, MonkeyMind or any content on it. Some jurisdictions do not allow certain limitations, so parts of this section may not apply to you.</P>
         </Accordion>
 
-        <Accordion title="4. Affiliate links">
-          <P>Some links in the Library are affiliate links. If you buy through them, we may earn a small commission at no extra cost to you. This does not change which books we feature.</P>
+        <Accordion title="4. Links to other sites">
+          <P>Library buttons link to stores such as Amazon. These are ordinary links: we do not earn anything from them. Other sites have their own terms and privacy policies, and we are not responsible for their content.</P>
         </Accordion>
 
         <Accordion title="5. Content and ownership">

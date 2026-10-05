@@ -96,44 +96,6 @@ async function run() {
     }
   });
   
-  // Enable request interception to mock Supabase queries
-  await page.setRequestInterception(true);
-  page.on('request', (request) => {
-    const url = request.url();
-    const method = request.method();
-    
-    if (url.includes('/rest/v1/')) {
-      // Handle CORS preflight OPTIONS requests directly
-      if (method === 'OPTIONS') {
-        request.respond({
-          status: 200,
-          headers: {
-            'access-control-allow-origin': '*',
-            'access-control-allow-headers': '*',
-            'access-control-allow-methods': '*',
-            'access-control-max-age': '86400'
-          }
-        });
-        return;
-      }
-    }
-    
-    if (url.includes('/rest/v1/books')) {
-      console.log(`  [intercepted books API call]: ${url}`);
-      request.respond({
-        status: 200,
-        contentType: 'application/json',
-        headers: { 
-          'access-control-allow-origin': '*',
-          'access-control-allow-headers': '*',
-          'access-control-allow-methods': '*'
-        },
-        body: JSON.stringify([]) // return empty array or mock data
-      });
-    } else {
-      request.continue();
-    }
-  });
 
   // Helper to ensure path exists in dist/
   function ensureDirectoryExistence(filePath) {

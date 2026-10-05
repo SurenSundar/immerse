@@ -1748,7 +1748,7 @@ body {
   font-size: 1.5rem; /* slightly scale down text */
 }
 
-/* Mobile responsive rules for bento grid and admin */
+/* Mobile responsive rules for bento grid */
 @media (max-width: 768px) {
 
   .water-letter {
@@ -1888,59 +1888,7 @@ body {
     flex-shrink: 0;
   }
 
-  /* Admin Panel Responsiveness */
-  .admin-container {
-    flex-direction: column !important;
-  }
-  .admin-sidebar {
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-    border-right: none !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  }
-  .admin-sidebar nav {
-    flex-direction: row !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    padding: 0.8rem !important;
-    gap: 8px !important;
-    scrollbar-width: none !important;
-  }
-  .admin-sidebar nav::-webkit-scrollbar {
-    display: none !important;
-  }
-  .admin-sidebar nav button,
-  .admin-sidebar nav a {
-    width: auto !important;
-    flex-shrink: 0 !important;
-    padding: 0.5rem 0.8rem !important;
-    font-size: 0.8rem !important;
-  }
-  .admin-sidebar nav button svg,
-  .admin-sidebar nav a svg {
-    width: 14px !important;
-    height: 14px !important;
-  }
-  .admin-main {
-    padding: 1.2rem !important;
-  }
-  .admin-charts-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .admin-grid-2-col {
-    grid-template-columns: 1fr !important;
-  }
-  .admin-table-row {
-    grid-template-columns: 48px 1fr !important;
-    row-gap: 8px !important;
-    padding: 1rem !important;
-  }
-  .admin-table-row > *:nth-child(3),
-  .admin-table-row > *:nth-child(4) {
-    grid-column: span 2 !important;
-    padding-left: 48px !important;
-  }
+
 }
 
 

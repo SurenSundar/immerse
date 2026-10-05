@@ -61,10 +61,9 @@ breathing guide and the shared background sounds.
 
 ## Step 6: Sanctuary Library (Books & Audio)
 URL: https://monkeymind.app/books
-Description: A curated affiliate bookstore with top-rated mindfulness,
-meditation, heartfulness, and mental resilience books and audiobooks.
-Filter by Text Books or Audio Guides. Each entry includes a description
-and a direct purchase link (Amazon and other platforms).
+Description: A hand-picked list of books and audiobooks on mindfulness,
+meditation and calm. Filter by books or audiobooks. Each entry has a short
+note and a link to find it in a store.
 
 ## Step 7: Let It Go
 URL: https://monkeymind.app/let-it-go
@@ -112,7 +111,7 @@ Platform: Web (React + Vite SPA)
 Access: Free, no login required for core tools
 Mobile: Fully responsive (mobile, tablet, desktop)
 Audio: Web Audio API (no external audio files needed)
-Database: Supabase (for the library and anonymous usage analytics)
+Backend: None. Static site with no accounts, tracking or database.
 
 # =========================================================
 # CANONICAL URLS

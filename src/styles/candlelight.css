@@ -479,7 +479,6 @@
    ===================================================================== */
 .lib-toolbar { display: flex; gap: 0.8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1.25rem; }
 .lib-search { max-width: 300px; }
-.lib-disclosure { margin: 0 0 1.75rem; font-size: 0.85rem; color: var(--mm-faint); }
 .books-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .book-card {
   position: relative;

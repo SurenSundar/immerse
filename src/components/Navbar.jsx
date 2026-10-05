@@ -38,7 +38,7 @@ export default function Navbar() {
     return () => document.removeEventListener('keydown', fn);
   }, [menuOpen]);
 
-  if (path === '/' || path.startsWith('/admin')) return null;
+  if (path === '/') return null;
 
   return (
     <>

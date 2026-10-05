@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TbMessage2, TbExternalLink, TbX } from 'react-icons/tb';
-import { supabase } from '../utils/supabaseClient';
-import { SAMPLE_BOOKS } from '../utils/sampleBooks';
+import { LIBRARY_BOOKS } from '../utils/libraryBooks';
 
 export default function Books() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeReviewId, setActiveReviewId] = useState(null);
-  const [allBooks, setAllBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  
+
   // Set tab based on url type parameter (e.g. ?type=audio or ?type=text) or default to 'all'
   const [activeTab, setActiveTab] = useState(() => {
     const typeParam = searchParams.get('type');
@@ -28,86 +25,29 @@ export default function Books() {
     }
   }, [searchParams]);
 
+  // Structured data so search engines understand the reading list
   useEffect(() => {
-    document.title = "The Sanctuary Library | MonkeyMind Books";
-    let isMounted = true;
-    const fetchBooks = async () => {
-      try {
-        setLoading(true);
-        // Don't leave people staring at placeholders if the database is slow or unreachable
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Library request timed out')), 5000));
-        const { data, error } = await Promise.race([
-          supabase.from('books').select('*').order('created_at', { ascending: false }),
-          timeout,
-        ]);
-        
-        if (error) throw error;
-        if (isMounted) {
-          setAllBooks(data || []);
-        }
-      } catch (err) {
-        console.error('Error fetching books from Supabase:', err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchBooks();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (allBooks.length > 0) {
-      let ldJsonScript = document.getElementById('books-jsonld');
-      if (!ldJsonScript) {
-        ldJsonScript = document.createElement('script');
-        ldJsonScript.id = 'books-jsonld';
-        ldJsonScript.type = 'application/ld+json';
-        document.head.appendChild(ldJsonScript);
-      }
-
-      const schemaData = {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        "name": "The Sanctuary Library - Recommended Mindfulness Books",
-        "description": "Curated reading and guided audio programs to quiet the monkey mind.",
-        "itemListElement": allBooks.map((book, index) => ({
-          "@type": "ListItem",
-          "position": index + 1,
-          "item": {
-            "@type": "Book",
-            "name": book.title,
-            "author": {
-              "@type": "Person",
-              "name": book.author
-            },
-            "image": "https://monkeymind.app/monkeymindLogo.svg",
-            "review": {
-              "@type": "Review",
-              "reviewBody": book.review,
-              "author": {
-                "@type": "Organization",
-                "name": "MonkeyMind Team"
-              }
-            }
-          }
-        }))
-      };
-
-      ldJsonScript.textContent = JSON.stringify(schemaData);
+    document.title = "The Library | MonkeyMind";
+    let ldJsonScript = document.getElementById('books-jsonld');
+    if (!ldJsonScript) {
+      ldJsonScript = document.createElement('script');
+      ldJsonScript.id = 'books-jsonld';
+      ldJsonScript.type = 'application/ld+json';
+      document.head.appendChild(ldJsonScript);
     }
-
-    return () => {
-      const ldJsonScript = document.getElementById('books-jsonld');
-      if (ldJsonScript) {
-        ldJsonScript.remove();
-      }
-    };
-  }, [allBooks]);
+    ldJsonScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "The MonkeyMind Library",
+      "description": "Hand-picked books and audiobooks on meditation and mindfulness.",
+      "itemListElement": LIBRARY_BOOKS.map((book, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "item": { "@type": "Book", "name": book.title, "author": { "@type": "Person", "name": book.author } }
+      }))
+    });
+    return () => document.getElementById('books-jsonld')?.remove();
+  }, []);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -119,11 +59,8 @@ export default function Books() {
     setSearchParams(searchParams);
   };
 
-  // Until real books are added (or if the database can't be reached), show a sample shelf
-  const shelf = !loading && allBooks.length === 0 ? SAMPLE_BOOKS : allBooks;
-
   // Filter books based on search and tab
-  const filteredBooks = shelf.filter(book => {
+  const filteredBooks = LIBRARY_BOOKS.filter(book => {
     const matchesTab = activeTab === 'all' || book.type === activeTab;
     const matchesSearch = !search || 
       book.title.toLowerCase().includes(search.toLowerCase()) || 
@@ -167,19 +104,8 @@ export default function Books() {
         />
       </div>
 
-      {/* Affiliate disclosure — must be visible near the links (sample shelf links are not affiliate links) */}
-      {loading ? null : shelf === SAMPLE_BOOKS ? (
-        <p className="lib-disclosure">A few books we love to start you off. More are on the way.</p>
-      ) : (
-        <p className="lib-disclosure">
-          Some links below are affiliate links. If you buy through them, we may earn a small commission at no extra cost to you.
-        </p>
-      )}
-
       <div className="books-grid">
-        {loading ? (
-          [0, 1, 2].map(i => <div key={i} className="lib-skeleton" aria-hidden="true" />)
-        ) : filteredBooks.length === 0 ? (
+        {filteredBooks.length === 0 ? (
           <div className="lib-empty">
             No books match that search. Try a different word or filter.
           </div>
@@ -207,12 +133,11 @@ export default function Books() {
                   {(() => {
                     const buyLink = book.buyLink || book.amazonLink || book.flipkartLink;
                     const shopName = book.shopName || (book.amazonLink ? 'Amazon' : book.flipkartLink ? 'Flipkart' : 'Platform');
-                    const isSample = String(book.id).startsWith('sample-');
                     const hasLink = buyLink && buyLink !== 'https://www.amazon.com' && buyLink !== 'https://www.flipkart.com';
                     if (!hasLink) return null;
                     return (
-                      <a href={buyLink} target="_blank" rel={isSample ? 'noopener noreferrer' : 'noopener noreferrer sponsored'} className="mm-btn mm-btn--primary mm-btn--sm">
-                        <TbExternalLink size={16} /> {isSample ? `Find on ${shopName}` : `Buy on ${shopName}`}
+                      <a href={buyLink} target="_blank" rel="noopener noreferrer" className="mm-btn mm-btn--primary mm-btn--sm">
+                        <TbExternalLink size={16} /> Find on {shopName}
                       </a>
                     );
                   })()}

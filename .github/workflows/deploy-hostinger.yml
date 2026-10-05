@@ -30,9 +30,6 @@ jobs:
 
       # `npm run build` also runs the prerender step (postbuild) with Puppeteer
       - run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Publish dist/ to the hostinger branch
         uses: peaceiris/actions-gh-pages@v4

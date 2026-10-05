@@ -12,7 +12,6 @@ import SoundDock from './components/SoundDock';
 import Books from './pages/Books';
 import LetItGo from './components/LetItGo';
 import Soundscapes from './components/Soundscapes';
-import Admin from './pages/Admin';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import WellnessNotice from './components/WellnessNotice';
@@ -23,19 +22,12 @@ import { TbVolume, TbVolumeOff } from 'react-icons/tb';
 import { CALMING_TEXTS, PENTATONIC, lightScale, skyOpacity, shouldShowSanctuary, markSanctuaryDone, requestSanctuary } from './utils/sanctuaryJourney';
 
 import { getAudioContext, playZenChime, playSingingBowl, playCardHover, isGlobalMuted, setGlobalMute } from './utils/zenAudio';
-import { trackPageStart, trackPageEnd } from './utils/analytics';
 import { updateMetaTags } from './utils/meta';
 
-/** Tracks page views automatically on every route change */
-function usePageTracking() {
+/** Keeps the page title and social/SEO meta tags in sync with the route */
+function usePageMeta() {
   const location = useLocation();
   useEffect(() => {
-    const pageMap = {
-      '/': 'home', '/timer': 'timer', '/resonance': 'resonance',
-      '/meditate': 'meditation', '/let-it-go': 'let_it_go', '/soundscapes': 'soundscapes', '/admin': 'admin', '/privacy': 'privacy',
-      '/books': 'books', '/terms': 'terms',
-    };
-    
     const titleMap = {
       '/': "MonkeyMind - Premium Meditation, Mindfulness & Heartfulness Sanctuary",
       '/timer': "Zen Focus Session | MonkeyMind",
@@ -46,26 +38,20 @@ function usePageTracking() {
       '/soundscapes': "Soundscapes | MonkeyMind",
       '/privacy': "Privacy Policy | MonkeyMind",
       '/terms': "Terms of Use & Wellness Disclaimer | MonkeyMind",
-      '/admin': "Sanctuary Control Panel | MonkeyMind"
     };
 
     const descriptionMap = {
-      '/': "Quiet the restless monkey mind. Discover MonkeyMind, a premium, immersive digital sanctuary. Practice guided breathing, Pomodoro focus timers, and read reviews in our affiliate library.",
+      '/': "Quiet the restless monkey mind. Discover MonkeyMind, a calm, immersive digital sanctuary. Practice guided breathing, let go of worries, meditate, and listen to soothing soundscapes.",
       '/timer': "Boost your productivity with our Pomodoro Zen Focus Timer. Customize ambient soundscapes like forest rivers and singing bowls to stay in deep focus.",
       '/resonance': "Relax with slow, guided breathing. Practice box breathing, 4-7-8 and resonance patterns with gentle zen chimes.",
-      '/books': "Explore the Sanctuary Library. Curated books and audio guides on meditation, mindfulness, and heartfulness with direct affiliate shop links.",
+      '/books': "Explore the Library: hand-picked books and audiobooks on meditation, mindfulness and calm.",
       '/meditate': "A gentle voice-guided meditation with a breathing guide and your choice of calming background sounds.",
       '/let-it-go': "Write down what is weighing on you and watch the words drift away. Nothing is saved or sent anywhere.",
       '/soundscapes': "Blend calming ambient sounds: rain, ocean waves, wind, a flowing stream, a warm drone and singing bowls, with a fade-out timer.",
       '/terms': "MonkeyMind is a relaxation tool, not medical advice. Read our terms of use and wellness disclaimer.",
-      '/privacy': "Read our privacy policy detailing how we protect your user data, handle Supabase analytics events, and disclose affiliate links."
+      '/privacy': "MonkeyMind has no accounts, no tracking and no backend. Read what stays in your browser and which third parties are involved."
     };
     
-    const page = pageMap[location.pathname] || location.pathname.replace('/', '') || 'home';
-    const startTs = Date.now();
-    let rowId = null;
-    trackPageStart(page).then(id => { rowId = id; });
-
     // Update all head elements for SEO / Social Cards
     {
       const title = titleMap[location.pathname] || "MonkeyMind - Premium Meditation Sanctuary";
@@ -73,7 +59,6 @@ function usePageTracking() {
       updateMetaTags(title, desc, location.pathname);
     }
 
-    return () => { trackPageEnd(rowId, startTs); };
   }, [location.pathname]);
 }
 
@@ -744,14 +729,6 @@ function MeditationPage() { return <div className="mm-scope" style={{ position: 
 function LetItGoPage()    { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><LetItGo /></div>; }
 function SoundscapesPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Soundscapes /></div>; }
 
-function AdminPage() {
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}>
-      <Admin />
-    </div>
-  )
-}
-
 function TermsPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><TermsOfUse /></div>; }
 function PrivacyPage()   { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><PrivacyPolicy /></div>; }
 function BooksPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Books /></div>; }
@@ -769,7 +746,7 @@ function NotFoundPage() {
 
 function AnimatedRoutes() {
   const location = useLocation();
-  usePageTracking();
+  usePageMeta();
 
   return (
     <AnimatePresence mode="wait">
@@ -780,12 +757,11 @@ function AnimatedRoutes() {
         <Route path="/meditate" element={<PageTransition><MeditationPage /></PageTransition>} />
         <Route path="/let-it-go" element={<PageTransition><LetItGoPage /></PageTransition>} />
         <Route path="/soundscapes" element={<PageTransition><SoundscapesPage /></PageTransition>} />
-        <Route path="/admin" element={<PageTransition><AdminPage /></PageTransition>} />
         <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
         <Route path="/books" element={<PageTransition><BooksPage /></PageTransition>} />
         {/* Removed sections: send old links home instead of a dead end */}
-        {['/about', '/about-us', '/community', '/blog', '/blog/*', '/zen-garden'].map(p => (
+        {['/about', '/about-us', '/community', '/blog', '/blog/*', '/zen-garden', '/admin'].map(p => (
           <Route key={p} path={p} element={<Navigate to="/" replace />} />
         ))}
         <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
@@ -855,7 +831,7 @@ function AppLayout() {
       </div>
 
       {showSoundDock && <SoundDock />}
-      {!location.pathname.startsWith('/admin') && <WellnessNotice />}
+      <WellnessNotice />
     </div>
   );
 }
