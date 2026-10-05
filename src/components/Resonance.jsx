@@ -1,19 +1,22 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { TbVolume, TbVolumeOff } from 'react-icons/tb';
+import { getAudioContext, playSingingBowl, startBreathingSynth, stopBreathingSynth } from '../utils/zenAudio';
 
 const PHASE_COLORS = {
     INHALE: '#00ff9d', // Bright Teal
-    HOLD: '#ffffff',   // Pure White
+    HOLD: '#00b8ff',   // Cyan
     EXHALE: '#0088ff', // Deep Blue
 };
 
 const PATTERNS = {
     BOX: {
         id: 'BOX',
-        label: 'BOX BREATHING',
+        label: 'Box breathing',
+        short: 'Box',
         desc: 'Inhale 4s • Hold 4s • Exhale 4s • Hold 4s',
         phases: [
             { name: 'INHALE', duration: 4, scale: 2 },
@@ -24,7 +27,8 @@ const PATTERNS = {
     },
     RELAX: {
         id: 'RELAX',
-        label: '4-7-8 RELAX',
+        label: '4-7-8 relax',
+        short: '4-7-8',
         desc: 'Inhale 4s • Hold 7s • Exhale 8s',
         phases: [
             { name: 'INHALE', duration: 4, scale: 2 },
@@ -34,7 +38,8 @@ const PATTERNS = {
     },
     ENERGY: {
         id: 'ENERGY',
-        label: 'ENERGY AWAKE',
+        label: 'Energy awake',
+        short: 'Energy',
         desc: 'Inhale 6s • Exhale 2s',
         phases: [
             { name: 'INHALE', duration: 6, scale: 2 },
@@ -52,19 +57,25 @@ function ParticleLung({ color, phaseName }) {
     const speeds = useRef(null);
 
     // Initialize
-    if (!particles.current) {
-        particles.current = new Float32Array(count * 3);
-        speeds.current = new Float32Array(count);
+    const particlesData = useMemo(() => {
+        const p = new Float32Array(count * 3);
+        const s = new Float32Array(count);
         for (let i = 0; i < count; i++) {
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.acos(Math.random() * 2 - 1);
             const r = 1 + Math.random() * 0.5;
 
-            particles.current[i * 3] = r * Math.sin(phi) * Math.cos(theta); // x
-            particles.current[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta); // y
-            particles.current[i * 3 + 2] = r * Math.cos(phi); // z
-            speeds.current[i] = Math.random();
+            p[i * 3] = r * Math.sin(phi) * Math.cos(theta); // x
+            p[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta); // y
+            p[i * 3 + 2] = r * Math.cos(phi); // z
+            s[i] = Math.random();
         }
+        return { p, s };
+    }, []);
+
+    if (!particles.current) {
+        particles.current = particlesData.p;
+        speeds.current = particlesData.s;
     }
 
     const dummy = useRef(new THREE.Object3D());
@@ -121,23 +132,73 @@ function ParticleLung({ color, phaseName }) {
 function ResonanceScene() {
     const [currentPatternKey, setCurrentPatternKey] = useState('BOX');
     const [phaseIndex, setPhaseIndex] = useState(0);
-    const [startTime, setStartTime] = useState(Date.now());
+    const [startTime, setStartTime] = useState(() => Date.now());
+    const [timeLeft, setTimeLeft] = useState(4); // default to 4 since BOX inhale is 4s
+    const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+    const [soundVolume, setSoundVolume] = useState(0.4);
+    const [isMobile, setIsMobile] = useState(false);
     const groupRef = useRef();
 
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 768px)');
+        setIsMobile(media.matches);
+        const listener = (e) => setIsMobile(e.matches);
+        media.addEventListener('change', listener);
+        return () => media.removeEventListener('change', listener);
+    }, []);
+
     const pattern = PATTERNS[currentPatternKey];
+
+    // Safety guard for pattern changes before phaseIndex state resets
+    const safePhaseIndex = phaseIndex >= pattern.phases.length ? 0 : phaseIndex;
 
     useEffect(() => {
         setPhaseIndex(0);
         setStartTime(Date.now());
-    }, [currentPatternKey]);
+        setTimeLeft(pattern.phases[0].duration);
+    }, [currentPatternKey, pattern]);
+
+    // Handle phase audio triggers
+    const currentPhase = pattern.phases[safePhaseIndex];
+    const currentPhaseName = currentPhase.name;
+    const duration = currentPhase.duration;
+
+    // Read volume through a ref so dragging the slider doesn't restart the phase audio
+    const soundVolumeRef = useRef(soundVolume);
+    useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
+
+    useEffect(() => {
+        if (isSoundEnabled) {
+            getAudioContext();
+            // Subtle transition tone (G4 Singing Bowl)
+            playSingingBowl(392.00, 1.8, soundVolumeRef.current * 0.35);
+            // Dynamic breathing synth
+            startBreathingSynth(currentPhaseName, duration, soundVolumeRef.current);
+        } else {
+            stopBreathingSynth();
+        }
+
+        return () => {
+            stopBreathingSynth();
+        };
+    }, [safePhaseIndex, currentPatternKey, isSoundEnabled, currentPhaseName, duration]);
 
     useFrame(() => {
         const now = Date.now();
         const elapsed = (now - startTime) / 1000;
-        const currentPhase = pattern.phases[phaseIndex];
+        
+        // Double safety check inside frame loop
+        const framePhaseIndex = phaseIndex >= pattern.phases.length ? 0 : phaseIndex;
+        const currentPhase = pattern.phases[framePhaseIndex];
+
+        // Update time left (ceiling to show full seconds, maxing out at 1)
+        setTimeLeft(Math.max(1, Math.ceil(currentPhase.duration - elapsed)));
 
         if (elapsed > currentPhase.duration) {
-            setPhaseIndex((prev) => (prev + 1) % pattern.phases.length);
+            setPhaseIndex((prev) => {
+                const nextIdx = (prev + 1) % pattern.phases.length;
+                return nextIdx >= pattern.phases.length ? 0 : nextIdx;
+            });
             setStartTime(now);
         }
 
@@ -161,7 +222,6 @@ function ResonanceScene() {
         }
     });
 
-    const currentPhaseName = pattern.phases[phaseIndex].name;
     const currentColor = PHASE_COLORS[currentPhaseName];
 
     return (
@@ -169,59 +229,64 @@ function ResonanceScene() {
             <ambientLight intensity={0.5} />
 
             {/* 3D CONTENT */}
-            <group ref={groupRef} position={[0, 1.5, 0]}>
+            <group ref={groupRef} position={[0, 1.2, 0]}>
                 <ParticleLung color={currentColor} phaseName={currentPhaseName} />
             </group>
 
             {/* HTML OVERLAY */}
-            <Html center position={[0, -2.5, 0]} style={{ width: '100vw' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'none' }}>
-
-                    {/* Big Phase Indicator */}
-                    <div style={{
-                        fontFamily: 'Inter', fontWeight: 800, fontSize: '5rem',
-                        color: currentColor, textAlign: 'center',
-                        textShadow: `0 0 40px ${currentColor}`,
-                        lineHeight: 1, marginBottom: '0.5rem',
-                        transition: 'color 0.5s'
-                    }}>
-                        {currentPhaseName}
+            <Html center position={isMobile ? [0, -1.8, 0] : [0, -2.8, 0]} style={{ width: '100vw' }}>
+                <div className="breathe-ui">
+                    <div className="breathe-phase" style={{ color: currentColor }}>
+                        {currentPhaseName.toLowerCase()}
                     </div>
+                    <div className="breathe-count">{timeLeft}s</div>
 
-                    {/* Pattern Info */}
-                    <div style={{
-                        textAlign: 'center', color: '#888',
-                        fontFamily: 'JetBrains Mono', fontSize: '1rem',
-                        maxWidth: '500px', lineHeight: 1.6, marginBottom: '2rem'
-                    }}>
-                        <strong style={{ color: '#fff', fontSize: '1.2rem', display: 'block', marginBottom: '0.2rem' }}>{pattern.label}</strong>
+                    <p className="breathe-info">
+                        <strong>{pattern.label}</strong>
                         {pattern.desc}
-                    </div>
+                        <small>Breathe gently. Stop if you feel dizzy, and breathe normally anytime.</small>
+                    </p>
 
-                    {/* Controls */}
-                    <div style={{ pointerEvents: 'auto', display: 'flex', gap: '1rem' }}>
+                    <div className="mm-chips breathe-patterns" role="group" aria-label="Breathing pattern">
                         {Object.values(PATTERNS).map((p) => (
                             <button
                                 key={p.id}
-                                onClick={() => setCurrentPatternKey(p.id)}
-                                style={{
-                                    background: currentPatternKey === p.id ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)',
-                                    color: currentPatternKey === p.id ? '#fff' : '#888',
-                                    border: `1px solid ${currentPatternKey === p.id ? '#fff' : 'rgba(255,255,255,0.2)'}`,
-                                    padding: '1rem 2rem',
-                                    borderRadius: '8px',
-                                    fontFamily: 'JetBrains Mono',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    textTransform: 'uppercase',
-                                    fontSize: '0.8rem',
-                                    letterSpacing: '1px'
+                                className={`mm-chip ${currentPatternKey === p.id ? 'is-on' : ''}`}
+                                aria-pressed={currentPatternKey === p.id}
+                                onClick={() => {
+                                    getAudioContext();
+                                    setCurrentPatternKey(p.id);
                                 }}
                             >
-                                {p.label.split(' ')[0]}
+                                {p.short}
                             </button>
                         ))}
+                    </div>
+
+                    <div className="mm-panel breathe-sound">
+                        <button
+                            className="mm-btn mm-btn--ghost mm-btn--sm"
+                            onClick={() => {
+                                getAudioContext();
+                                setIsSoundEnabled(!isSoundEnabled);
+                            }}
+                            aria-pressed={isSoundEnabled}
+                        >
+                            {isSoundEnabled ? <TbVolume size={18} /> : <TbVolumeOff size={18} />}
+                            {isSoundEnabled ? 'Sound on' : 'Sound off'}
+                        </button>
+                        <span className="breathe-sound__divider" />
+                        <input
+                            type="range"
+                            className="mm-range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={soundVolume}
+                            onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                            disabled={!isSoundEnabled}
+                            aria-label="Breathing sound volume"
+                        />
                     </div>
                 </div>
             </Html>
@@ -234,11 +299,17 @@ function ResonanceScene() {
 }
 
 export default function Resonance() {
+    useEffect(() => {
+        return () => stopBreathingSynth(); // Clean up audio nodes
+    }, []);
+
     return (
-        <div style={{ width: '100%', height: '100vh', background: '#050505' }}>
+        <div className="breathe-page">
+            <div className="hero-ambient-bg"></div>
+
             <Canvas camera={{ position: [0, 0, 8] }}>
                 <ResonanceScene />
-                <OrbitControls enableZoom={false} enableRotate={false} />
+                <OrbitControls enableZoom={false} enableRotate={false} enablePan={false} />
             </Canvas>
         </div>
     )

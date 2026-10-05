@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MonkeyMind</string>
+    <string name="title_activity_main">MonkeyMind</string>
+    <string name="package_name">app.monkeymind.sanctuary</string>
+    <string name="custom_url_scheme">app.monkeymind.sanctuary</string>
+</resources>

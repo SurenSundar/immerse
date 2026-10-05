@@ -1,0 +1,6 @@
+{
+  "appId": "app.monkeymind.sanctuary",
+  "appName": "MonkeyMind",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

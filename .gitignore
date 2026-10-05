@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets and local-only files
+.env
+.env.*
+!.env.example
+deploy.zip
+.claude/

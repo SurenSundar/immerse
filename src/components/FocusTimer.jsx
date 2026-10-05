@@ -2,6 +2,7 @@ import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { EffectComposer, Bloom, Noise, Glitch, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { getAudioContext, playSingingBowl } from '../utils/zenAudio';
 
 // --- Particle Focus Formation ---
 function FocusParticles({ count = 2000, mode = "idle" }) {
@@ -41,9 +42,9 @@ function FocusParticles({ count = 2000, mode = "idle" }) {
 
         // Color logic
         const targetColor = tempColor;
-        if (mode === 'focus') targetColor.set("#00ffaa");
+        if (mode === 'focus') targetColor.set("#00ff9d");
         else if (mode === 'break') targetColor.set("#ff0055");
-        else targetColor.set("#ffffff");
+        else targetColor.set("#00b8ff");
 
         particles.forEach((p, i) => {
             let destX, destY, destZ;
@@ -98,21 +99,30 @@ export default function FocusTimer() {
         let interval = null;
         if (isActive && timeLeft > 0) {
             interval = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(interval);
+                        setIsActive(false);
+                        if (mode === 'focus') {
+                            // Focus session complete: play double singing bowl resonance
+                            playSingingBowl(146.83, 6.5, 0.8); // Deep D3 bowl
+                            setTimeout(() => playSingingBowl(220.00, 5.0, 0.6), 1400); // Higher A3 resonance
+                            setMode('break');
+                            return 5 * 60;
+                        } else {
+                            // Break complete: play warning chime
+                            playSingingBowl(220.00, 5.0, 0.7); // A3 bowl
+                            setMode('idle');
+                            return customTime * 60;
+                        }
+                    }
+                    return prev - 1;
+                });
             }, 1000);
-        } else if (timeLeft === 0 && isActive) {
-            clearInterval(interval);
-            setIsActive(false);
-            if (mode === 'focus') {
-                setMode('break');
-                setTimeLeft(5 * 60);
-            } else {
-                setMode('idle');
-                setTimeLeft(customTime * 60);
-            }
         }
         return () => clearInterval(interval);
-    }, [isActive, timeLeft, mode, customTime]);
+    }, [isActive, mode, customTime]);
+
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -129,28 +139,42 @@ export default function FocusTimer() {
     };
 
     const toggleTimer = () => {
-        if (!isActive && mode === 'idle') {
-            setMode('focus');
+        // An empty / zero duration can't be started
+        if (!isActive && timeLeft <= 0) return;
+        getAudioContext();
+        if (!isActive) {
+            if (mode === 'idle') {
+                setMode('focus');
+            }
+            // Starting or resuming: play deep singing bowl
+            playSingingBowl(220.00, 4.5, 0.65);
+        } else {
+            // Pausing: play soft crystal pause chime
+            playSingingBowl(329.63, 1.8, 0.35);
         }
         setIsActive(!isActive);
         setIsEditing(false);
     };
 
     const resetTimer = () => {
+        getAudioContext();
+        // Play grounding reset bowl
+        playSingingBowl(164.81, 2.5, 0.45);
         setIsActive(false);
         setMode('idle');
         setTimeLeft(customTime * 60);
     };
 
+    const canEdit = !isActive && mode === 'idle';
+
     return (
-        <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
+        <div className="focus-page">
             <Canvas
                 dpr={[1, 2]}
                 camera={{ position: [0, 0, 40], fov: 45 }}
                 gl={{ toneMapping: THREE.ReinhardToneMapping }}
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
             >
-                <color attach="background" args={['#050505']} />
                 <FocusParticles count={2500} mode={mode} />
                 <EffectComposer disableNormalPass>
                     <Bloom luminanceThreshold={0.2} intensity={1.5} radius={0.5} />
@@ -160,33 +184,18 @@ export default function FocusTimer() {
                 </EffectComposer>
             </Canvas>
 
-            <div
-                style={{
-                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                    pointerEvents: 'none', zIndex: 10, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', alignItems: 'center', color: 'white', fontFamily: 'monospace'
-                }}
-            >
-                <div style={{
-                    border: '1px solid rgba(255,255,255,0.3)', padding: '0.5rem 1rem',
-                    borderRadius: '20px', marginBottom: '1rem', textTransform: 'uppercase',
-                    letterSpacing: '2px', fontSize: '0.8rem', background: 'rgba(0,0,0,0.5)',
-                    color: mode === 'focus' ? '#00ffaa' : mode === 'break' ? '#ff0055' : 'white',
-                    borderColor: mode === 'focus' ? '#00ffaa' : mode === 'break' ? '#ff0055' : 'rgba(255,255,255,0.3)'
-                }}>
-                    {mode === 'idle' ? 'System Idle' : mode === 'focus' ? 'Focus Session' : 'Short Break'}
-                </div>
+            <div className="focus-overlay">
+                <span className={`focus-status focus-status--${mode}`}>
+                    {mode === 'idle' ? 'Ready when you are' : mode === 'focus' ? 'Focus session' : 'Short break'}
+                </span>
 
-                {/* Editable Timer Display */}
                 <div
-                    onClick={() => { if (!isActive && mode === 'idle') setIsEditing(true); }}
-                    style={{
-                        fontSize: '15vmin', fontWeight: 'bold', letterSpacing: '-5px',
-                        color: mode === 'break' ? '#ff0055' : 'white',
-                        textShadow: '0 0 30px rgba(0,0,0,0.5)', marginBottom: '1rem',
-                        lineHeight: 1, cursor: (!isActive && mode === 'idle') ? 'pointer' : 'default',
-                        pointerEvents: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center'
-                    }}
+                    className={`focus-time focus-time--${mode} ${canEdit ? 'is-editable' : ''}`}
+                    onClick={() => { if (canEdit) setIsEditing(true); }}
+                    role={canEdit ? 'button' : undefined}
+                    tabIndex={canEdit && !isEditing ? 0 : undefined}
+                    onKeyDown={(e) => { if (canEdit && e.key === 'Enter') setIsEditing(true); }}
+                    aria-label={canEdit && !isEditing ? `Session length ${customTime} minutes. Press to change.` : undefined}
                 >
                     {isEditing ? (
                         <input
@@ -194,63 +203,35 @@ export default function FocusTimer() {
                             value={customTime}
                             onChange={handleTimeChange}
                             onBlur={() => setIsEditing(false)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') setIsEditing(false); }}
                             autoFocus
                             min="1" max="120"
-                            style={{
-                                background: 'transparent', border: 'none', borderBottom: '2px solid white',
-                                color: 'inherit', fontSize: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit',
-                                textAlign: 'center', width: '3ch', outline: 'none', padding: 0, margin: 0
-                            }}
+                            aria-label="Session length in minutes"
                         />
                     ) : formatTime(timeLeft)}
                 </div>
 
-                {(!isActive && mode === 'idle' && !isEditing) && (
-                    <div style={{ fontSize: '0.8rem', opacity: 0.5, marginBottom: '2rem' }}>
-                        (CLICK TIMER TO EDIT)
-                    </div>
+                {canEdit && !isEditing && (
+                    <p className="focus-hint">Tap the time to change the length</p>
                 )}
 
-                <div style={{ pointerEvents: 'auto', marginBottom: '3rem', opacity: mode === 'break' ? 0 : 1, transition: 'opacity 0.5s', display: isEditing ? 'none' : 'block' }}>
+                {!isEditing && mode !== 'break' && (
                     <input
                         type="text"
+                        className="mm-input focus-task"
                         placeholder="What are you focusing on?"
-                        style={{
-                            background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.3)',
-                            color: 'white', fontSize: '1.5rem', textAlign: 'center', width: '400px', maxWidth: '80vw',
-                            padding: '0.5rem', outline: 'none', fontFamily: 'monospace'
-                        }}
+                        aria-label="What are you focusing on?"
                     />
-                </div>
+                )}
 
-                <div style={{ pointerEvents: 'auto', display: 'flex', gap: '1.5rem' }}>
-                    <button
-                        onClick={toggleTimer}
-                        style={{
-                            background: 'white', color: 'black', border: 'none',
-                            padding: '1rem 3rem', borderRadius: '8px', fontSize: '1.2rem',
-                            fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase',
-                            boxShadow: '0 0 20px rgba(255,255,255,0.2)'
-                        }}
-                    >
-                        {isActive ? 'PAUSE' : (mode === 'idle' ? 'START FOCUS' : 'RESUME')}
+                <div className="focus-actions">
+                    <button className="mm-btn mm-btn--primary" onClick={toggleTimer}>
+                        {isActive ? 'Pause' : (mode === 'idle' ? 'Start focus' : 'Resume')}
                     </button>
-
-                    <button
-                        onClick={resetTimer}
-                        style={{
-                            background: 'transparent', color: 'white', border: '1px solid white',
-                            padding: '1rem 2rem', borderRadius: '8px', fontSize: '1rem',
-                            cursor: 'pointer', textTransform: 'uppercase', opacity: 0.7
-                        }}
-                    >
-                        RESET
-                    </button>
+                    <button className="mm-btn" onClick={resetTimer}>Reset</button>
                 </div>
 
-                <div style={{ position: 'absolute', bottom: '2rem', fontSize: '0.7rem', opacity: 0.4, letterSpacing: '2px' }}>
-                    ZONE.3D | IMMERSIVE FOCUS TIMER
-                </div>
+                <p className="focus-sound-hint">Add rain, waves or bowls with the Sounds button. They keep playing while you work.</p>
             </div>
         </div>
     );
