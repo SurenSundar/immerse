@@ -170,7 +170,10 @@ async function run() {
     console.log(`Crawling: ${route} (${targetUrl})`);
     
     try {
-      await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      // 3D pages keep rendering (and are slow on machines without a GPU, e.g. CI),
+      // so wait for the DOM, then give the network a short chance to settle.
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForNetworkIdle({ idleTime: 500, timeout: 15000 }).catch(() => {});
       
       // Extract the fully rendered HTML DOM
       const htmlContent = await page.content();
