@@ -29,3 +29,6 @@ dist-ssr
 !.env.example
 deploy.zip
 .claude/
+
+# Local admin data from `npm run dev:api` (login, live book list, backups)
+monkeymind-data/

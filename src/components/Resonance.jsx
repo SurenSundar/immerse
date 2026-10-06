@@ -3,8 +3,18 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { TbVolume, TbVolumeOff } from 'react-icons/tb';
+import { TbVolume, TbVolumeOff, TbMicrophone, TbMicrophoneOff } from 'react-icons/tb';
 import { getAudioContext, playSingingBowl, startBreathingSynth, stopBreathingSynth } from '../utils/zenAudio';
+import { hasBreathVoice, guidePhase, speakBreath, stopBreathVoice } from '../utils/breathVoice';
+
+const VOICE_KEY = 'mm-breath-voice';
+const VOICE_STYLE_KEY = 'mm-breath-voice-style';
+const readPref = (key, fallback) => {
+    try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+};
+const writePref = (key, value) => {
+    try { localStorage.setItem(key, value); } catch { /* ignore */ }
+};
 
 const PHASE_COLORS = {
     INHALE: '#00ff9d', // Bright Teal
@@ -136,6 +146,8 @@ function ResonanceScene() {
     const [timeLeft, setTimeLeft] = useState(4); // default to 4 since BOX inhale is 4s
     const [isSoundEnabled, setIsSoundEnabled] = useState(true);
     const [soundVolume, setSoundVolume] = useState(0.4);
+    const [isVoiceOn, setIsVoiceOn] = useState(() => hasBreathVoice() && readPref(VOICE_KEY, 'off') === 'on');
+    const [voiceStyle, setVoiceStyle] = useState(() => (readPref(VOICE_STYLE_KEY, 'cues') === 'counts' ? 'counts' : 'cues'));
     const [isMobile, setIsMobile] = useState(false);
     const groupRef = useRef();
 
@@ -167,13 +179,17 @@ function ResonanceScene() {
     const soundVolumeRef = useRef(soundVolume);
     useEffect(() => { soundVolumeRef.current = soundVolume; }, [soundVolume]);
 
+    // Duck the breathing synth a little while the voice guide is speaking
+    const isVoiceOnRef = useRef(isVoiceOn);
+    useEffect(() => { isVoiceOnRef.current = isVoiceOn; }, [isVoiceOn]);
+
     useEffect(() => {
         if (isSoundEnabled) {
             getAudioContext();
             // Subtle transition tone (G4 Singing Bowl)
             playSingingBowl(392.00, 1.8, soundVolumeRef.current * 0.35);
             // Dynamic breathing synth
-            startBreathingSynth(currentPhaseName, duration, soundVolumeRef.current);
+            startBreathingSynth(currentPhaseName, duration, soundVolumeRef.current * (isVoiceOnRef.current ? 0.6 : 1));
         } else {
             stopBreathingSynth();
         }
@@ -182,6 +198,31 @@ function ResonanceScene() {
             stopBreathingSynth();
         };
     }, [safePhaseIndex, currentPatternKey, isSoundEnabled, currentPhaseName, duration]);
+
+    const phaseStartRef = useRef(startTime);
+    useEffect(() => { phaseStartRef.current = startTime; }, [startTime]);
+
+    // Spoken guide at the start of each phase (and each second in counts mode)
+    useEffect(() => {
+        if (!isVoiceOn) return undefined;
+        return guidePhase(currentPhaseName, duration, voiceStyle, Date.now() - phaseStartRef.current);
+    }, [safePhaseIndex, currentPatternKey, isVoiceOn, voiceStyle, currentPhaseName, duration]);
+
+    useEffect(() => () => stopBreathVoice(), []);
+
+    const toggleVoice = () => {
+        const next = !isVoiceOn;
+        setIsVoiceOn(next);
+        writePref(VOICE_KEY, next ? 'on' : 'off');
+        // Speak inside the tap so iOS/Safari unlock speech for later phases
+        if (next) speakBreath(' ');
+        else stopBreathVoice();
+    };
+
+    const chooseVoiceStyle = (style) => {
+        setVoiceStyle(style);
+        writePref(VOICE_STYLE_KEY, style);
+    };
 
     useFrame(() => {
         const now = Date.now();
@@ -234,7 +275,7 @@ function ResonanceScene() {
             </group>
 
             {/* HTML OVERLAY */}
-            <Html center position={isMobile ? [0, -1.8, 0] : [0, -2.8, 0]} style={{ width: '100vw' }}>
+            <Html center position={isMobile ? [0, -1.8, 0] : [0, -2.5, 0]} style={{ width: '100vw' }}>
                 <div className="breathe-ui">
                     <div className="breathe-phase" style={{ color: currentColor }}>
                         {currentPhaseName.toLowerCase()}
@@ -288,6 +329,33 @@ function ResonanceScene() {
                             aria-label="Breathing sound volume"
                         />
                     </div>
+
+                    {hasBreathVoice() && (
+                        <div className="mm-panel breathe-sound breathe-voice">
+                            <button
+                                className="mm-btn mm-btn--ghost mm-btn--sm"
+                                onClick={toggleVoice}
+                                aria-pressed={isVoiceOn}
+                            >
+                                {isVoiceOn ? <TbMicrophone size={18} /> : <TbMicrophoneOff size={18} />}
+                                {isVoiceOn ? 'Voice on' : 'Voice off'}
+                            </button>
+                            <span className="breathe-sound__divider" />
+                            <div className="mm-chips" role="group" aria-label="Voice guide style">
+                                {[['cues', 'Cues'], ['counts', 'Counts']].map(([id, label]) => (
+                                    <button
+                                        key={id}
+                                        className={`mm-chip ${voiceStyle === id ? 'is-on' : ''}`}
+                                        aria-pressed={voiceStyle === id}
+                                        disabled={!isVoiceOn}
+                                        onClick={() => chooseVoiceStyle(id)}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </Html>
 
@@ -300,7 +368,7 @@ function ResonanceScene() {
 
 export default function Resonance() {
     useEffect(() => {
-        return () => stopBreathingSynth(); // Clean up audio nodes
+        return () => { stopBreathingSynth(); stopBreathVoice(); }; // Clean up audio nodes
     }, []);
 
     return (

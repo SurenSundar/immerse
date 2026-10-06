@@ -43,7 +43,7 @@ export default function TermsOfUse() {
         </Accordion>
 
         <Accordion title="4. Links to other sites">
-          <P>Library buttons link to stores such as Amazon. These are ordinary links: we do not earn anything from them. Other sites have their own terms and privacy policies, and we are not responsible for their content.</P>
+          <P>Library buttons link to stores such as Amazon. Some of these are affiliate links: as an Amazon Associate, MonkeyMind earns from qualifying purchases. This costs you nothing extra and never affects which books we choose or what our reviews say. Other sites have their own terms and privacy policies, and we are not responsible for their content.</P>
         </Accordion>
 
         <Accordion title="5. Content and ownership">
@@ -55,7 +55,7 @@ export default function TermsOfUse() {
         </Accordion>
 
         <Accordion title="7. Contact">
-          <P>Questions about these terms: <a href="mailto:hello@monkeymind.app" className="mm-link">hello@monkeymind.app</a></P>
+          <P>Questions about these terms: <a href="mailto:hello@monkeymind.online" className="mm-link">hello@monkeymind.online</a></P>
         </Accordion>
       </div>
 

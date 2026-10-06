@@ -2027,7 +2027,7 @@ body {
 }
 .sanctuary-skip-btn:hover { color: #fff; border-color: rgba(0, 255, 157, 0.5); }
 
-/* ── Wellness notice (every page) ── */
+/* ── Wellness notice + studio credit (every page) ── */
 :root { --notice-h: 30px; }
 .wellness-notice {
   position: fixed;
@@ -2041,7 +2041,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  padding: 6px 1rem calc(6px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 1rem calc(4px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.5));
   font-family: Inter, system-ui, sans-serif;
   font-size: 0.7rem;
@@ -2050,6 +2050,7 @@ body {
   text-align: center;
   pointer-events: none;
 }
+.wellness-notice-text { display: inline-flex; align-items: center; gap: 0.6rem; min-width: 0; }
 .wellness-notice-short { display: none; }
 .wellness-notice-link {
   pointer-events: auto;
@@ -2058,10 +2059,75 @@ body {
   white-space: nowrap;
 }
 .wellness-notice-link:hover { color: #00ff9d; text-decoration: underline; }
-@media (max-width: 640px) {
-  .wellness-notice-long { display: none; }
-  .wellness-notice-short { display: inline; }
+
+/* Studio credit: brand mark + yellow wordmark in a pill.
+   Desktop: floats on its own beside the mute button. Tablet/phone: sits in the notice bar. */
+.webgrid-badge {
+  pointer-events: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 205, 5, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: Inter, system-ui, sans-serif;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
+.webgrid-badge img { display: block; }
+.webgrid-badge b { color: #ffcd05; font-weight: 700; letter-spacing: 0.01em; }
+.webgrid-badge:focus-visible { outline: 2px solid #ffcd05; outline-offset: 2px; }
+
+@media (min-width: 769px) {
+  .webgrid-badge {
+    position: fixed;
+    left: calc(1.25rem + 42px + 0.6rem); /* just right of the mute button */
+    bottom: calc(1.25rem + var(--notice-h));
+    z-index: 10005;
+    height: 42px;
+    box-sizing: border-box;
+    padding: 0 1.1rem 0 0.45rem;
+    background: rgba(11, 16, 32, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 205, 5, 0.08);
+    font-size: 0.88rem;
+  }
+  .webgrid-badge img { width: 30px; height: 30px; }
+  .webgrid-badge b { font-size: 0.95rem; }
+  .webgrid-badge:hover {
+    border-color: #ffcd05;
+    background: rgba(30, 26, 12, 0.85);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 18px rgba(255, 205, 5, 0.25);
+  }
+}
+
+@media (max-width: 768px) {
+  :root { --notice-h: 38px; }
+  .wellness-notice { gap: 0.6rem; padding-left: 0.6rem; padding-right: 0.6rem; }
+  .wellness-notice-long, .wellness-notice-more { display: none; }
+  .wellness-notice-short { display: inline; text-decoration: underline; text-underline-offset: 2px; }
+  .webgrid-badge { gap: 0.4rem; padding: 3px 0.6rem 3px 0.5rem; background: rgba(255, 205, 5, 0.1); font-size: 0.74rem; }
+  .webgrid-badge img { width: 20px; height: 20px; }
+  .webgrid-badge:hover { background: rgba(255, 205, 5, 0.2); border-color: #ffcd05; }
+}
+@media (max-width: 340px) {
+  .webgrid-badge__by { display: none; }
+}
+
+/* Sanctuary: a quiet credit that wakes up on hover/focus */
+.webgrid-badge.is-subtle {
+  opacity: 0.35;
+  border-color: rgba(255, 205, 5, 0.18);
+  box-shadow: none;
+  transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.webgrid-badge.is-subtle:hover,
+.webgrid-badge.is-subtle:focus-visible { opacity: 1; }
 
 /* ── Terms accordions ── */
 .terms-accordion {

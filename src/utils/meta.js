@@ -8,7 +8,7 @@
  */
 export function updateMetaTags(title, description, path) {
   const cleanPath = path || '';
-  const url = `https://monkeymind.app${cleanPath}`;
+  const url = `https://monkeymind.online${cleanPath}`;
   
   // Update browser window/tab title
   document.title = title;

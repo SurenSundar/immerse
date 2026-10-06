@@ -1,0 +1,5 @@
+# Only the two endpoints are reachable; helpers and anything else stay private
+Options -Indexes
+<FilesMatch "^_">
+  Require all denied
+</FilesMatch>

@@ -136,6 +136,16 @@ export default function Navbar() {
                   <Link to="/privacy" onClick={() => setMenuOpen(false)}>Privacy</Link>
                   <Link to="/terms" onClick={() => setMenuOpen(false)}>Terms</Link>
                 </div>
+                <a
+                  className="mm-drawer__credit"
+                  href="https://webgrid.studio/"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Powered by webgrid.studio (opens in a new tab)"
+                >
+                  Powered by
+                  <img src="/webgrid-studio.svg" width="150" height="71" alt="" decoding="async" />
+                </a>
               </div>
             </motion.nav>
           </>

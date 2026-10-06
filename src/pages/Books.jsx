@@ -1,12 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TbMessage2, TbExternalLink, TbX } from 'react-icons/tb';
-import { LIBRARY_BOOKS } from '../utils/libraryBooks';
+import { LIBRARY_BOOKS, fetchLiveBooks, isPlaceholderLink } from '../utils/libraryBooks';
+
+const PAGE_SIZE = 24;
 
 export default function Books() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeReviewId, setActiveReviewId] = useState(null);
   const [search, setSearch] = useState('');
+  // Built-in list first (instant, and what pre-rendering captures), then the live list
+  const [books, setBooks] = useState(LIBRARY_BOOKS);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchLiveBooks(ctrl.signal).then((live) => { if (live) setBooks(live); });
+    return () => ctrl.abort();
+  }, []);
 
   // Set tab based on url type parameter (e.g. ?type=audio or ?type=text) or default to 'all'
   const [activeTab, setActiveTab] = useState(() => {
@@ -25,6 +35,11 @@ export default function Books() {
     }
   }, [searchParams]);
 
+  // How many cards are shown; a new search or filter starts again from the first page
+  const filterKey = `${activeTab}|${search}`;
+  const [shown, setShown] = useState({ key: filterKey, count: PAGE_SIZE });
+  const visibleCount = shown.key === filterKey ? shown.count : PAGE_SIZE;
+
   // Structured data so search engines understand the reading list
   useEffect(() => {
     document.title = "The Library | MonkeyMind";
@@ -40,14 +55,14 @@ export default function Books() {
       "@type": "ItemList",
       "name": "The MonkeyMind Library",
       "description": "Hand-picked books and audiobooks on meditation and mindfulness.",
-      "itemListElement": LIBRARY_BOOKS.map((book, index) => ({
+      "itemListElement": books.map((book, index) => ({
         "@type": "ListItem",
         "position": index + 1,
         "item": { "@type": "Book", "name": book.title, "author": { "@type": "Person", "name": book.author } }
       }))
     });
     return () => document.getElementById('books-jsonld')?.remove();
-  }, []);
+  }, [books]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -60,7 +75,7 @@ export default function Books() {
   };
 
   // Filter books based on search and tab
-  const filteredBooks = LIBRARY_BOOKS.filter(book => {
+  const filteredBooks = books.filter(book => {
     const matchesTab = activeTab === 'all' || book.type === activeTab;
     const matchesSearch = !search || 
       book.title.toLowerCase().includes(search.toLowerCase()) || 
@@ -79,6 +94,9 @@ export default function Books() {
       <header className="mm-page-header">
         <h1>The Library</h1>
         <p>Hand-picked books and audiobooks on meditation and mindfulness.</p>
+        <p className="lib-disclosure">
+          As an Amazon Associate, MonkeyMind earns from qualifying purchases. Buying through our links costs you nothing extra.
+        </p>
       </header>
 
       <div className="lib-toolbar">
@@ -110,7 +128,7 @@ export default function Books() {
             No books match that search. Try a different word or filter.
           </div>
         ) : (
-          filteredBooks.map(book => {
+          filteredBooks.slice(0, visibleCount).map(book => {
             return (
               <div className="mm-panel book-card" key={book.id}>
                 <div className="book-cover-container">
@@ -136,7 +154,12 @@ export default function Books() {
                     const hasLink = buyLink && buyLink !== 'https://www.amazon.com' && buyLink !== 'https://www.flipkart.com';
                     if (!hasLink) return null;
                     return (
-                      <a href={buyLink} target="_blank" rel="noopener noreferrer" className="mm-btn mm-btn--primary mm-btn--sm">
+                      <a
+                        href={buyLink}
+                        target="_blank"
+                        rel={isPlaceholderLink(buyLink) ? 'noopener noreferrer' : 'sponsored noopener noreferrer'}
+                        className="mm-btn mm-btn--primary mm-btn--sm"
+                      >
                         <TbExternalLink size={16} /> Find on {shopName}
                       </a>
                     );
@@ -165,6 +188,14 @@ export default function Books() {
           })
         )}
       </div>
+
+      {filteredBooks.length > visibleCount && (
+        <div className="lib-more">
+          <button className="mm-btn" onClick={() => setShown({ key: filterKey, count: visibleCount + PAGE_SIZE })}>
+            Show more ({filteredBooks.length - visibleCount} left)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

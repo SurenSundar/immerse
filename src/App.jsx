@@ -1,5 +1,5 @@
 import { ErrorBoundary } from './ErrorBoundary';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 
@@ -10,6 +10,8 @@ import monkSvg from './assets/monk_5778234.svg?url';
 import Meditation from './components/Meditation';
 import SoundDock from './components/SoundDock';
 import Books from './pages/Books';
+// Owner-only editor: kept out of the main bundle
+const Admin = lazy(() => import('./pages/Admin'));
 import LetItGo from './components/LetItGo';
 import Soundscapes from './components/Soundscapes';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -38,6 +40,7 @@ function usePageMeta() {
       '/soundscapes': "Soundscapes | MonkeyMind",
       '/privacy': "Privacy Policy | MonkeyMind",
       '/terms': "Terms of Use & Wellness Disclaimer | MonkeyMind",
+      '/admin': "Library admin | MonkeyMind",
     };
 
     const descriptionMap = {
@@ -49,7 +52,7 @@ function usePageMeta() {
       '/let-it-go': "Write down what is weighing on you and watch the words drift away. Nothing is saved or sent anywhere.",
       '/soundscapes': "Blend calming ambient sounds: rain, ocean waves, wind, a flowing stream, a warm drone and singing bowls, with a fade-out timer.",
       '/terms': "MonkeyMind is a relaxation tool, not medical advice. Read our terms of use and wellness disclaimer.",
-      '/privacy': "MonkeyMind has no accounts, no tracking and no backend. Read what stays in your browser and which third parties are involved."
+      '/privacy': "MonkeyMind has no visitor accounts and no tracking. Read what stays in your browser and which third parties are involved."
     };
     
     // Update all head elements for SEO / Social Cards
@@ -733,6 +736,8 @@ function TermsPage()     { return <div className="mm-scope" style={{ position: '
 function PrivacyPage()   { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><PrivacyPolicy /></div>; }
 function BooksPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Books /></div>; }
 
+function AdminPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><Admin /></Suspense></div>; }
+
 function NotFoundPage() {
   return (
     <div className="not-found-page mm-scope">
@@ -760,8 +765,9 @@ function AnimatedRoutes() {
         <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
         <Route path="/books" element={<PageTransition><BooksPage /></PageTransition>} />
+        <Route path="/admin" element={<AdminPage />} />
         {/* Removed sections: send old links home instead of a dead end */}
-        {['/about', '/about-us', '/community', '/blog', '/blog/*', '/zen-garden', '/admin'].map(p => (
+        {['/about', '/about-us', '/community', '/blog', '/blog/*', '/zen-garden'].map(p => (
           <Route key={p} path={p} element={<Navigate to="/" replace />} />
         ))}
         <Route path="*" element={<PageTransition><NotFoundPage /></PageTransition>} />
