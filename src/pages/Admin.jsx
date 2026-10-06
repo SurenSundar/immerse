@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   TbLock, TbLogout, TbDeviceFloppy, TbPlus, TbSearch, TbExternalLink, TbPencil,
-  TbTrash, TbDownload, TbUpload, TbKey, TbAlertTriangle, TbCheck, TbX,
+  TbTrash, TbDownload, TbUpload, TbKey, TbAlertTriangle, TbCheck, TbX, TbPhoto, TbHistory,
 } from 'react-icons/tb';
-import { LIBRARY_BOOKS, isPlaceholderLink } from '../utils/libraryBooks';
+import { LIBRARY_BOOKS, coverSrc, isPlaceholderLink, withBuiltInCovers } from '../utils/libraryBooks';
 import './Admin.css';
 
 // ── API ────────────────────────────────────────────────────────────────────
@@ -32,7 +32,9 @@ async function api(action, { body, csrf } = {}) {
 }
 
 // ── Book helpers ───────────────────────────────────────────────────────────
-const FIELDS = ['id', 'type', 'title', 'author', 'buyLink', 'shopName', 'emoji', 'coverColor', 'review'];
+const FIELDS = ['id', 'type', 'title', 'author', 'buyLink', 'shopName', 'emoji', 'coverColor', 'cover', 'review'];
+// Covers are always files on our own server (built-in, or saved from Open Library here)
+const COVER_PATH = /^(\/covers\/[a-z0-9-]+\.(webp|jpg)|\/api\/cover\.php\?f=ol-\d{1,12}\.jpg)$/;
 const DEFAULT_COVER = 'linear-gradient(160deg, #3b4a7a, #1d2647)';
 const COVER_RE = /^linear-gradient\((\d{1,3})deg,\s*(#[0-9a-fA-F]{3,8}),\s*(#[0-9a-fA-F]{3,8})\)$/;
 
@@ -245,6 +247,7 @@ function Editor({ session, setSession, onSignedOut }) {
   const [notice, setNotice] = useState(null); // { kind: 'ok' | 'error', text, list? }
   const [saving, setSaving] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showBackups, setShowBackups] = useState(false);
   const fileRef = useRef(null);
 
   const adopt = useCallback((list, updatedAt, fromServer) => {
@@ -259,7 +262,7 @@ function Editor({ session, setSession, onSignedOut }) {
     setLoadError('');
     try {
       const data = await api('books');
-      if (data.books) adopt(data.books, data.updatedAt, true);
+      if (data.books) adopt(withBuiltInCovers(data.books), data.updatedAt, true);
       else adopt(LIBRARY_BOOKS, null, false);
     } catch (e) {
       if (e.status === 401) onSignedOut();
@@ -353,6 +356,22 @@ function Editor({ session, setSession, onSignedOut }) {
     setOpenKey(nb._k);
   };
 
+  // Put a saved version into the editor as unsaved changes; Save makes it live again
+  const loadBackup = async (name, savedAt) => {
+    if (dirty && !window.confirm('Replace your unsaved changes with this backup?')) return;
+    try {
+      const data = await api(`backup&name=${encodeURIComponent(name)}`);
+      const keyById = new Map(books.map((b) => [b.id, b._k]));
+      setBooks(data.books.map((b) => (keyById.has(b.id) ? { ...b, _k: keyById.get(b.id) } : withKey(b))));
+      setShowBackups(false);
+      setLinkFilter('all');
+      setNotice({ kind: 'ok', text: `Loaded the version saved ${new Date(savedAt).toLocaleString()}. Review it, then press Save to make it live again.` });
+    } catch (e) {
+      if (e.status === 401) onSignedOut();
+      else setNotice({ kind: 'error', text: e.message });
+    }
+  };
+
   const save = async () => {
     setNotice(null);
     if (problems.size) {
@@ -403,6 +422,7 @@ function Editor({ session, setSession, onSignedOut }) {
       FIELDS.forEach((f) => { if (col[f] >= 0 && r[col[f]] !== undefined) rec[f] = r[col[f]].trim(); });
       if (!rec.id) { skipped++; return; }
       if (rec.type && rec.type !== 'audio') rec.type = 'text';
+      if (rec.cover && !COVER_PATH.test(rec.cover)) delete rec.cover;
       const existing = byId.get(rec.id);
       if (existing) {
         // Only columns that are present and filled in replace the current values
@@ -449,6 +469,9 @@ function Editor({ session, setSession, onSignedOut }) {
           <p className="adm-muted">Signed in as <b>{session.username}</b></p>
         </div>
         <div className="adm-head__actions">
+          <button className="mm-btn mm-btn--ghost mm-btn--sm" onClick={() => setShowBackups((v) => !v)} aria-expanded={showBackups}>
+            <TbHistory size={16} /> Backups
+          </button>
           <button className="mm-btn mm-btn--ghost mm-btn--sm" onClick={() => setShowAccount((v) => !v)} aria-expanded={showAccount}>
             <TbKey size={16} /> Password
           </button>
@@ -463,6 +486,8 @@ function Editor({ session, setSession, onSignedOut }) {
           onCancel={() => setShowAccount(false)}
         />
       )}
+
+      {showBackups && <BackupsPanel onLoad={loadBackup} onClose={() => setShowBackups(false)} onSignedOut={onSignedOut} />}
 
       {!onServer && (
         <div className="adm-banner">
@@ -539,6 +564,7 @@ function Editor({ session, setSession, onSignedOut }) {
             onChange={(patch) => update(b._k, patch)}
             onRemove={() => remove(b)}
             takenIds={idCounts}
+            csrf={session.csrf}
           />
         ))}
         {visible.length === 0 && <li className="adm-empty">No books match these filters.</li>}
@@ -548,7 +574,9 @@ function Editor({ session, setSession, onSignedOut }) {
 }
 
 // ── One row ────────────────────────────────────────────────────────────────
-function BookRow({ book, open, problems, changed, onToggle, onChange, onRemove, takenIds }) {
+function BookRow({ book, open, problems, changed, onToggle, onChange, onRemove, takenIds, csrf }) {
+  const [picking, setPicking] = useState(false);
+  const thumb = coverSrc(book);
   const state = linkState(book.buyLink);
   const cover = COVER_RE.exec(book.coverColor || '') || COVER_RE.exec(DEFAULT_COVER);
   const setCover = (i, value) => {
@@ -570,7 +598,9 @@ function BookRow({ book, open, problems, changed, onToggle, onChange, onRemove, 
   return (
     <li className={`mm-panel adm-row ${open ? 'is-open' : ''} ${problems ? 'has-problem' : ''}`}>
       <div className="adm-row__main">
-        <div className="adm-row__cover" style={{ background: book.coverColor }} aria-hidden="true">{book.emoji}</div>
+        <div className="adm-row__cover" style={{ background: book.coverColor }} aria-hidden="true">
+          {thumb ? <img src={thumb} alt="" loading="lazy" /> : book.emoji}
+        </div>
         <div className="adm-row__info">
           <div className="adm-row__title">
             <span className={`adm-type adm-type--${book.type}`}>{book.type === 'audio' ? 'Audio' : 'Book'}</span>
@@ -619,6 +649,29 @@ function BookRow({ book, open, problems, changed, onToggle, onChange, onRemove, 
           </label>
           <label className="adm-field"><span>Shop name</span><input className="mm-input" {...field('shopName')} placeholder="Amazon" /></label>
           <label className="adm-field"><span>Emoji</span><input className="mm-input" {...field('emoji')} maxLength={8} /></label>
+          <div className="adm-field adm-field--full adm-cover">
+            <span>Cover image</span>
+            <div className="adm-cover__row">
+              <div className="adm-cover__preview" style={{ background: book.coverColor }}>
+                {thumb ? <img src={thumb} alt="" /> : <span>{book.emoji}</span>}
+              </div>
+              <div className="adm-cover__actions">
+                <button type="button" className="mm-btn mm-btn--sm" onClick={() => setPicking((v) => !v)} disabled={!book.title}>
+                  <TbPhoto size={16} /> {thumb ? 'Change cover' : 'Find cover'}
+                </button>
+                {thumb && <button type="button" className="mm-btn mm-btn--ghost mm-btn--sm" onClick={() => onChange({ cover: '' })}>Remove cover</button>}
+                <p className="adm-muted adm-cover__hint">Without an image, the coloured cover below is shown.</p>
+              </div>
+            </div>
+            {picking && (
+              <CoverPicker
+                book={book}
+                csrf={csrf}
+                onPick={(cover) => { onChange({ cover }); setPicking(false); }}
+                onClose={() => setPicking(false)}
+              />
+            )}
+          </div>
           <div className="adm-field">
             <span>Cover colours</span>
             <div className="adm-colors">
@@ -676,5 +729,111 @@ function PasswordForm({ csrf, onDone, onCancel }) {
         <button className="mm-btn mm-btn--primary mm-btn--sm" disabled={busy}>{busy ? 'Saving…' : 'Change password'}</button>
       </div>
     </form>
+  );
+}
+
+// ── Cover picker (searches Open Library; the chosen cover is copied to our server) ──
+function CoverPicker({ book, csrf, onPick, onClose }) {
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(null);
+  const [query, setQuery] = useState(() => `${book.title.split(/[:(]/)[0].trim()} ${book.author.split(/,| and /)[0]}`);
+
+  const search = useCallback(async (q) => {
+    setResults(null);
+    setError('');
+    try {
+      const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=24&fields=key,title,author_name,cover_i,first_publish_year`);
+      const data = await res.json();
+      const seen = new Set();
+      setResults((data.docs || []).filter((d) => d.cover_i && !seen.has(d.cover_i) && seen.add(d.cover_i)).slice(0, 12));
+    } catch {
+      setError('Could not reach Open Library. Check your connection and try again.');
+      setResults([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    // Run the first search once; later searches come from the form
+    Promise.resolve().then(() => { if (live) search(query); });
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const choose = async (coverId) => {
+    setSaving(coverId);
+    setError('');
+    try {
+      const data = await api('cover', { body: { coverId: String(coverId) }, csrf });
+      onPick(data.cover);
+    } catch (e) {
+      setError(e.message);
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="adm-picker">
+      <form className="adm-picker__search" onSubmit={(e) => { e.preventDefault(); search(query); }}>
+        <input className="mm-input" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search Open Library" />
+        <button className="mm-btn mm-btn--sm">Search</button>
+        <button type="button" className="adm-icon" onClick={onClose} aria-label="Close cover search"><TbX size={18} /></button>
+      </form>
+      {error && <p className="adm-error">{error}</p>}
+      {results === null && <p className="adm-muted">Searching Open Library…</p>}
+      {results?.length === 0 && !error && <p className="adm-muted">No covers found. Try a shorter title or just the author’s surname.</p>}
+      {results?.length > 0 && (
+        <ul className="adm-picker__grid">
+          {results.map((d) => (
+            <li key={d.cover_i}>
+              <button type="button" onClick={() => choose(d.cover_i)} disabled={saving !== null} title={`${d.title} — ${(d.author_name || []).join(', ')}`}>
+                <img src={`https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`} alt="" loading="lazy" />
+                <span>{saving === d.cover_i ? 'Saving…' : d.title}</span>
+                <small>{(d.author_name || [])[0]}{d.first_publish_year ? ` · ${d.first_publish_year}` : ''}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="adm-muted adm-picker__note">Pick the edition that looks right; it’s copied to your server, so visitors never load images from Open Library.</p>
+    </div>
+  );
+}
+
+// ── Backups ────────────────────────────────────────────────────────────────
+function BackupsPanel({ onLoad, onClose, onSignedOut }) {
+  const [list, setList] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let live = true;
+    api('backups')
+      .then((d) => { if (live) setList(d.backups); })
+      .catch((e) => { if (!live) return; if (e.status === 401) onSignedOut(); else setError(e.message); });
+    return () => { live = false; };
+  }, [onSignedOut]);
+
+  return (
+    <section className="mm-panel adm-card adm-backups" aria-label="Backups">
+      <div className="adm-backups__head">
+        <h2>Backups</h2>
+        <button className="adm-icon" onClick={onClose} aria-label="Close backups"><TbX size={18} /></button>
+      </div>
+      <p className="adm-muted">Every save keeps the previous version (the last 30). Loading one puts it in the editor; nothing changes on the site until you press Save.</p>
+      {error && <p className="adm-error">{error}</p>}
+      {list === null && !error && <p className="adm-muted">Loading…</p>}
+      {list?.length === 0 && <p className="adm-muted">No backups yet. One is made each time you save.</p>}
+      {list?.length > 0 && (
+        <ul className="adm-backups__list">
+          {list.map((b) => (
+            <li key={b.name}>
+              <span>{b.savedAt ? new Date(b.savedAt).toLocaleString() : b.name}</span>
+              <span className="adm-muted">{b.count} books</span>
+              <button className="mm-btn mm-btn--sm" onClick={() => onLoad(b.name, b.savedAt)}>Load</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

@@ -2,6 +2,9 @@
 // Shared helpers for the Library API. Not an endpoint: only included by books.php / admin.php.
 if (!defined('MM_API')) { http_response_code(404); exit; }
 
+// PHP notices must never leak into JSON responses (they still go to the error log)
+ini_set('display_errors', '0');
+
 // ── Storage ────────────────────────────────────────────────────────────────
 // Everything private (login, live book list, backups, rate-limit counters) lives
 // OUTSIDE the web root, so it can't be downloaded and deploys never overwrite it.
@@ -65,6 +68,8 @@ function mm_fail(int $status, string $message, array $extra = []): void {
 // ── Book validation ────────────────────────────────────────────────────────
 const MM_MAX_BOOKS = 2000;
 const MM_DEFAULT_COVER = 'linear-gradient(160deg, #3b4a7a, #1d2647)';
+const MM_COVER_PATH = '#^(/covers/[a-z0-9-]+\.(webp|jpg)|/api/cover\.php\?f=ol-\d{1,12}\.jpg)$#';
+const MM_SITE = 'https://monkeymind.online';
 
 function mm_str($v, int $max): string {
   $s = trim(is_string($v) ? $v : '');
@@ -101,6 +106,10 @@ function mm_clean_books($input): array {
     $cover = mm_str($b['coverColor'] ?? '', 120);
     if (!preg_match('/^linear-gradient\(\d{1,3}deg,\s*#[0-9a-fA-F]{3,8},\s*#[0-9a-fA-F]{3,8}\)$/', $cover)) $cover = MM_DEFAULT_COVER;
 
+    // Cover images are always our own files: built-in (/covers/…) or saved from the admin
+    $image = mm_str($b['cover'] ?? '', 120);
+    if ($image !== '' && !preg_match(MM_COVER_PATH, $image)) $image = '';
+
     $out[] = [
       'id' => $id,
       'type' => $type,
@@ -108,6 +117,7 @@ function mm_clean_books($input): array {
       'author' => $author,
       'emoji' => mm_str($b['emoji'] ?? '', 16) ?: '📖',
       'coverColor' => $cover,
+      'cover' => $image,
       'review' => mm_str($b['review'] ?? '', 1200),
       'buyLink' => $link,
       'shopName' => mm_str($b['shopName'] ?? '', 40) ?: 'Amazon',
@@ -115,3 +125,34 @@ function mm_clean_books($input): array {
   }
   return [$out, $errors];
 }
+
+// ── Covers ─────────────────────────────────────────────────────────────────
+function mm_download(string $url): ?string {
+  if (function_exists('curl_init')) {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+      CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 4,
+      CURLOPT_TIMEOUT => 20, CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+      CURLOPT_USERAGENT => 'MonkeyMind cover fetch (monkeymind.online)',
+    ]);
+    $body = curl_exec($ch);
+    $ok = curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200;
+    if (PHP_VERSION_ID < 80000) curl_close($ch); // no-op (and deprecated) since PHP 8
+    return ($ok && is_string($body) && strlen($body) < 5 * 1024 * 1024) ? $body : null;
+  }
+  $ctx = stream_context_create(['http' => ['timeout' => 20, 'user_agent' => 'MonkeyMind cover fetch (monkeymind.online)']]);
+  $body = @file_get_contents($url, false, $ctx, 0, 5 * 1024 * 1024);
+  return $body === false ? null : $body;
+}
+
+// Resize to a sensible width when the GD extension is available; otherwise keep the original
+function mm_shrink_jpeg(string $jpeg, int $width): string {
+  if (!function_exists('imagecreatefromstring')) return $jpeg;
+  $src = @imagecreatefromstring($jpeg);
+  if (!$src || imagesx($src) <= $width) return $jpeg;
+  $dst = imagescale($src, $width);
+  ob_start();
+  imagejpeg($dst, null, 80);
+  return (string) ob_get_clean() ?: $jpeg;
+}
+

@@ -3,19 +3,21 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 
-import FocusTimer from './components/FocusTimer';
-import Resonance from './components/Resonance';
 import UniverseBackground from './components/UniverseBackground';
 import monkSvg from './assets/monk_5778234.svg?url';
-import Meditation from './components/Meditation';
 import SoundDock from './components/SoundDock';
-import Books from './pages/Books';
-// Owner-only editor: kept out of the main bundle
+// Each tool page is its own chunk, so visitors only download what they open
+// (the 3D engine is only needed by Focus and Breathe).
+const FocusTimer = lazy(() => import('./components/FocusTimer'));
+const Resonance = lazy(() => import('./components/Resonance'));
+const Meditation = lazy(() => import('./components/Meditation'));
+const LetItGo = lazy(() => import('./components/LetItGo'));
+const Soundscapes = lazy(() => import('./components/Soundscapes'));
+const Books = lazy(() => import('./pages/Books'));
+const BookDetail = lazy(() => import('./pages/BookDetail'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfUse = lazy(() => import('./pages/TermsOfUse'));
 const Admin = lazy(() => import('./pages/Admin'));
-import LetItGo from './components/LetItGo';
-import Soundscapes from './components/Soundscapes';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsOfUse from './pages/TermsOfUse';
 import WellnessNotice from './components/WellnessNotice';
 import Navbar from './components/Navbar';
 import MobileSanctuary from './components/MobileSanctuary';
@@ -55,6 +57,9 @@ function usePageMeta() {
       '/privacy': "MonkeyMind has no visitor accounts and no tracking. Read what stays in your browser and which third parties are involved."
     };
     
+    // Book pages set their own title, description and share image
+    if (location.pathname.startsWith('/books/')) return;
+
     // Update all head elements for SEO / Social Cards
     {
       const title = titleMap[location.pathname] || "MonkeyMind - Premium Meditation Sanctuary";
@@ -712,7 +717,7 @@ function TimerPage() {
   }, []);
   return (
     <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20 }}>
-      <FocusTimer />
+      <Suspense fallback={null}><FocusTimer /></Suspense>
     </div>
   )
 }
@@ -723,18 +728,20 @@ function ResonancePage() {
   }, []);
   return (
     <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20 }}>
-      <Resonance />
+      <Suspense fallback={null}><Resonance /></Suspense>
     </div>
   )
 }
 
-function MeditationPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Meditation /></div>; }
-function LetItGoPage()    { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><LetItGo /></div>; }
-function SoundscapesPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Soundscapes /></div>; }
+function MeditationPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><Meditation /></Suspense></div>; }
+function LetItGoPage()    { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><LetItGo /></Suspense></div>; }
+function SoundscapesPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><Soundscapes /></Suspense></div>; }
 
-function TermsPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><TermsOfUse /></div>; }
-function PrivacyPage()   { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><PrivacyPolicy /></div>; }
-function BooksPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Books /></div>; }
+function TermsPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><TermsOfUse /></Suspense></div>; }
+function PrivacyPage()   { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><PrivacyPolicy /></Suspense></div>; }
+function BooksPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><Books /></Suspense></div>; }
+
+function BookDetailPage() { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><BookDetail /></Suspense></div>; }
 
 function AdminPage()     { return <div className="mm-scope" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 20, overflowY: 'auto', paddingBottom: 'var(--notice-h)', boxSizing: 'border-box' }}><Suspense fallback={null}><Admin /></Suspense></div>; }
 
@@ -765,6 +772,7 @@ function AnimatedRoutes() {
         <Route path="/privacy" element={<PageTransition><PrivacyPage /></PageTransition>} />
         <Route path="/terms" element={<PageTransition><TermsPage /></PageTransition>} />
         <Route path="/books" element={<PageTransition><BooksPage /></PageTransition>} />
+        <Route path="/books/:id" element={<PageTransition><BookDetailPage /></PageTransition>} />
         <Route path="/admin" element={<AdminPage />} />
         {/* Removed sections: send old links home instead of a dead end */}
         {['/about', '/about-us', '/community', '/blog', '/blog/*', '/zen-garden'].map(p => (

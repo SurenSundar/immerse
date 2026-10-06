@@ -5,8 +5,13 @@
  * @param {string} title Page title
  * @param {string} description Meta description (packed with target keywords)
  * @param {string} path Current route pathname (e.g., '/resonance')
+ * @param {string} [image] Absolute URL of a share image (defaults to the site image)
  */
-export function updateMetaTags(title, description, path) {
+let defaultImage = null;
+
+export function updateMetaTags(title, description, path, image) {
+  if (defaultImage === null) defaultImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '';
+  const shareImage = image || defaultImage;
   const cleanPath = path || '';
   const url = `https://monkeymind.online${cleanPath}`;
   
@@ -21,7 +26,8 @@ export function updateMetaTags(title, description, path) {
     'meta[name="twitter:title"]': title,
     'meta[name="twitter:description"]': description,
     'meta[name="twitter:url"]': url,
-    'link[rel="canonical"]': url
+    'link[rel="canonical"]': url,
+    ...(shareImage ? { 'meta[property="og:image"]': shareImage, 'meta[property="twitter:image"]': shareImage } : {}),
   };
 
   Object.entries(queries).forEach(([selector, val]) => {

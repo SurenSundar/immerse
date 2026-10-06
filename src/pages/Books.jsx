@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { TbMessage2, TbExternalLink, TbX } from 'react-icons/tb';
 import { LIBRARY_BOOKS, fetchLiveBooks, isPlaceholderLink } from '../utils/libraryBooks';
+import BookCover from '../components/BookCover';
 
 const PAGE_SIZE = 24;
 
@@ -13,9 +14,9 @@ export default function Books() {
   const [books, setBooks] = useState(LIBRARY_BOOKS);
 
   useEffect(() => {
-    const ctrl = new AbortController();
-    fetchLiveBooks(ctrl.signal).then((live) => { if (live) setBooks(live); });
-    return () => ctrl.abort();
+    let live = true;
+    fetchLiveBooks().then((list) => { if (live && list) setBooks(list); });
+    return () => { live = false; };
   }, []);
 
   // Set tab based on url type parameter (e.g. ?type=audio or ?type=text) or default to 'all'
@@ -131,16 +132,13 @@ export default function Books() {
           filteredBooks.slice(0, visibleCount).map(book => {
             return (
               <div className="mm-panel book-card" key={book.id}>
-                <div className="book-cover-container">
-                  <div className="book-cover" style={{ background: book.coverColor }} aria-label={`Cover of ${book.title} by ${book.author}`} role="img">
-                    <div className="book-cover-spine" />
-                    <div className="book-cover-emoji">{book.emoji}</div>
-                    <div className="book-cover-title">{book.title.toUpperCase()}</div>
-                    <div className="book-cover-author">{book.author}</div>
-                  </div>
-                </div>
+                <Link to={`/books/${book.id}`} className="book-cover-container" aria-label={`${book.title}: details`}>
+                  <BookCover book={book} />
+                </Link>
 
-                <h3 className="book-title" title={book.title}>{book.title}</h3>
+                <h3 className="book-title" title={book.title}>
+                  <Link to={`/books/${book.id}`}>{book.title}</Link>
+                </h3>
                 <p className="book-author">by {book.author}</p>
                 <span className="book-type">{book.type === 'audio' ? 'Audiobook' : 'Book'}</span>
 

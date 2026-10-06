@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { TbVolume, TbVolumeOff, TbMicrophone, TbMicrophoneOff } from 'react-icons/tb';
 import { getAudioContext, playSingingBowl, startBreathingSynth, stopBreathingSynth } from '../utils/zenAudio';
-import { hasBreathVoice, guidePhase, speakBreath, stopBreathVoice } from '../utils/breathVoice';
+import { hasBreathVoice, guidePhase, preloadBreathClips, speakBreath, stopBreathVoice } from '../utils/breathVoice';
 
 const VOICE_KEY = 'mm-breath-voice';
 const VOICE_STYLE_KEY = 'mm-breath-voice-style';
@@ -214,8 +214,8 @@ function ResonanceScene() {
         const next = !isVoiceOn;
         setIsVoiceOn(next);
         writePref(VOICE_KEY, next ? 'on' : 'off');
-        // Speak inside the tap so iOS/Safari unlock speech for later phases
-        if (next) speakBreath(' ');
+        // Start audio inside the tap so iOS/Safari allow the voice for later phases
+        if (next) { getAudioContext(); preloadBreathClips(); speakBreath(' '); }
         else stopBreathVoice();
     };
 

@@ -3,16 +3,10 @@
 
 User-agent: *
 Allow: /
-Allow: /timer
-Allow: /resonance
-Allow: /books
-Allow: /community
-Allow: /blog
-Allow: /about
-Allow: /about-us
-Allow: /privacy
 Allow: /sitemap.xml
 Allow: /llms.txt
+Allow: /api/sitemap.php
+Allow: /api/cover.php
 Disallow: /admin
 Disallow: /api/
 
@@ -69,6 +63,7 @@ Allow: /
 # ---- Sitemaps ----
 
 Sitemap: https://monkeymind.online/sitemap.xml
+Sitemap: https://monkeymind.online/api/sitemap.php
 
 # ---- AI / LLM Machine-Readable Context ----
 # This file explains the site to AI systems:

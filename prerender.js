@@ -4,6 +4,28 @@ import http from 'http';
 import puppeteer from 'puppeteer';
 
 const PORT = 5002;
+const SITE = 'https://monkeymind.online';
+
+// Every built-in book gets its own pre-rendered page (/books/<id>)
+const LIBRARY = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/data/library.json'), 'utf-8'));
+
+// Fresh sitemap on every build: main pages plus every book page.
+// Books added later in /admin are listed by /api/sitemap.php.
+function writeSitemap(routes) {
+  const today = new Date().toISOString().slice(0, 10);
+  const meta = (r) => r === '/' ? ['daily', '1.0']
+    : r === '/books' ? ['weekly', '0.9']
+    : r.startsWith('/books/') ? ['monthly', '0.6']
+    : r === '/privacy' || r === '/terms' ? ['yearly', '0.3']
+    : ['weekly', '0.8'];
+  const urls = routes.map((r) => {
+    const [freq, prio] = meta(r);
+    return `  <url>\n    <loc>${SITE}${r === '/' ? '' : r}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${freq}</changefreq>\n    <priority>${prio}</priority>\n  </url>`;
+  });
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
+  fs.writeFileSync(path.join(process.cwd(), 'dist', 'sitemap.xml'), xml, 'utf-8');
+  console.log(`Wrote sitemap.xml with ${routes.length} URLs`);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -123,6 +145,7 @@ async function run() {
     '/books',
     '/privacy',
     '/terms',
+    ...LIBRARY.map((b) => `/books/${b.id}`),
   ];
 
   console.log(`Pre-rendering ${routes.length} routes...`);
@@ -135,7 +158,13 @@ async function run() {
       // 3D pages keep rendering (and are slow on machines without a GPU, e.g. CI),
       // so wait for the DOM, then give the network a short chance to settle.
       await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForNetworkIdle({ idleTime: 500, timeout: 15000 }).catch(() => {});
+      if (route.startsWith('/books/')) {
+        // Book pages are light: wait for the heading instead of a quiet network
+        await page.waitForSelector('.bd-info h1', { timeout: 15000 });
+        await new Promise((r) => setTimeout(r, 150));
+      } else {
+        await page.waitForNetworkIdle({ idleTime: 500, timeout: 15000 }).catch(() => {});
+      }
       
       // Extract the fully rendered HTML DOM
       const htmlContent = await page.content();
@@ -155,6 +184,8 @@ async function run() {
       console.error(`Failed to pre-render route ${route}:`, err.message);
     }
   }
+
+  writeSitemap(routes);
 
   console.log("Pre-rendering finished! Closing browser and server...");
   await browser.close();

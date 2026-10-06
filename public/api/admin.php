@@ -8,6 +8,9 @@
 //   GET  ?action=books             → the live list (null if never saved)
 //   POST ?action=save              → {books, baseUpdatedAt}
 //   POST ?action=password          → {current, next}
+//   POST ?action=cover             → {coverId}: save an Open Library cover on our server
+//   GET  ?action=backups           → saved versions of the list
+//   GET  ?action=backup&name=…     → one saved version (to review and re-save)
 //
 // Writes need the session cookie AND the X-CSRF-Token header from `status`.
 define('MM_API', true);
@@ -248,6 +251,42 @@ switch ($action) {
     mm_write_json('account.json', $account);
     mm_start_session($account['username']);
     mm_json(200, ['ok' => true, 'csrf' => mm_csrf()]);
+
+  case 'cover':
+    if ($method !== 'POST') mm_fail(405, 'Method not allowed.');
+    mm_require_signed_in_write();
+    $b = mm_body();
+    $coverId = (string) ($b['coverId'] ?? '');
+    if (!preg_match('/^\d{1,12}$/', $coverId)) mm_fail(400, 'Invalid cover.');
+    $dir = mm_data_dir() . '/covers';
+    if (!is_dir($dir)) @mkdir($dir, 0700);
+    $file = "$dir/ol-$coverId.jpg";
+    if (!is_file($file)) {
+      $img = mm_download("https://covers.openlibrary.org/b/id/$coverId-L.jpg");
+      $info = $img ? @getimagesizefromstring($img) : false;
+      if (!$info || $info[2] !== IMAGETYPE_JPEG || $info[0] < 60) mm_fail(502, 'Could not download that cover. Try another one.');
+      if (file_put_contents($file, mm_shrink_jpeg($img, 360)) === false) mm_fail(500, 'Could not save the cover.');
+    }
+    mm_json(200, ['ok' => true, 'cover' => "/api/cover.php?f=ol-$coverId.jpg"]);
+
+  case 'backups':
+    if (!mm_signed_in()) mm_fail(401, 'Please sign in.');
+    $files = glob(mm_data_dir() . '/backups/books-*.json') ?: [];
+    rsort($files);
+    $list = [];
+    foreach ($files as $f) {
+      $d = json_decode((string) file_get_contents($f), true);
+      $list[] = ['name' => basename($f), 'savedAt' => $d['updatedAt'] ?? null, 'count' => count($d['books'] ?? [])];
+    }
+    mm_json(200, ['ok' => true, 'backups' => $list]);
+
+  case 'backup':
+    if (!mm_signed_in()) mm_fail(401, 'Please sign in.');
+    $name = (string) ($_GET['name'] ?? '');
+    if (!preg_match('/^books-\d{8}-\d{6}\.json$/', $name)) mm_fail(400, 'Invalid backup.');
+    $d = json_decode((string) @file_get_contents(mm_data_dir() . "/backups/$name"), true);
+    if (!is_array($d) || !isset($d['books'])) mm_fail(404, 'That backup no longer exists.');
+    mm_json(200, ['ok' => true, 'books' => $d['books'], 'savedAt' => $d['updatedAt'] ?? null]);
 
   default:
     mm_fail(404, 'Unknown action.');

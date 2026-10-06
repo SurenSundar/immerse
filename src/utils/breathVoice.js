@@ -1,9 +1,64 @@
-// Spoken breathing guide using the browser's built-in speech synthesis.
-import { isGlobalMuted } from './zenAudio';
+// Spoken breathing guide.
+// Plays recorded clips from public/audio/breath/ when they exist (see
+// docs/breathing-voice.md for the file list); any word without a clip falls
+// back to the device's built-in speech synthesis.
+import { getAudioContext, isGlobalMuted } from './zenAudio';
 
 const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+const hasWebAudio = typeof window !== 'undefined' && !!(window.AudioContext || window.webkitAudioContext);
 
-export const hasBreathVoice = () => !!synth;
+export const hasBreathVoice = () => !!synth || hasWebAudio;
+
+// ── Recorded clips ─────────────────────────────────────────────────────────
+const CLIP_DIR = '/audio/breath/';
+const CLIP_NAMES = ['breathe-in', 'hold', 'breathe-out', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+const clips = new Map(); // name → AudioBuffer
+let clipsRequested = false;
+let currentClip = null;
+let clipBusyUntil = 0;
+
+const clipName = (text) => text.trim().toLowerCase().replace(/\s+/g, '-');
+
+/** Starts loading the recorded clips once. Missing files are simply skipped. */
+export function preloadBreathClips() {
+  if (clipsRequested || !hasWebAudio) return;
+  clipsRequested = true;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  CLIP_NAMES.forEach((name) => {
+    fetch(`${CLIP_DIR}${name}.mp3`)
+      .then((res) => (res.ok && /audio/.test(res.headers.get('content-type') || '') ? res.arrayBuffer() : null))
+      .then((data) => (data ? ctx.decodeAudioData(data) : null))
+      .then((buffer) => { if (buffer) clips.set(name, buffer); })
+      .catch(() => { /* no clip: the device voice is used for this word */ });
+  });
+}
+
+function playClip(buffer) {
+  const ctx = getAudioContext();
+  if (!ctx) return false;
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  gain.gain.value = 0.9;
+  source.buffer = buffer;
+  source.connect(gain).connect(ctx.destination);
+  source.start();
+  currentClip = source;
+  clipBusyUntil = ctx.currentTime + buffer.duration;
+  source.onended = () => { if (currentClip === source) currentClip = null; };
+  return true;
+}
+
+function stopClip() {
+  try { currentClip?.stop(); } catch { /* already stopped */ }
+  currentClip = null;
+  clipBusyUntil = 0;
+}
+
+const clipPlaying = () => {
+  const ctx = getAudioContext();
+  return !!currentClip && !!ctx && ctx.currentTime < clipBusyUntil;
+};
 
 // Natural / enhanced voices sound far less robotic, so try those first
 const QUALITY = ['natural', 'enhanced', 'premium'];
@@ -34,10 +89,16 @@ const CALM = { rate: 0.75, pitch: 0.95, volume: 0.8 };
 // the voice never drifts behind the visual). Counts pass false and never clip
 // the previous word; they return false so the caller can wait a moment.
 export function speakBreath(text, { interrupt = true } = {}) {
-  if (!synth || isGlobalMuted()) return true;
+  if (isGlobalMuted()) return true;
+  preloadBreathClips();
   try {
-    if (interrupt) synth.cancel();
-    else if (synth.speaking || synth.pending) return false;
+    if (interrupt) { stopClip(); synth?.cancel(); }
+    else if (clipPlaying() || synth?.speaking || synth?.pending) return false;
+
+    const clip = clips.get(clipName(text));
+    if (clip && playClip(clip)) return true;
+    if (!synth) return true;
+
     const u = new SpeechSynthesisUtterance(text);
     const voice = pickVoice();
     if (voice) u.voice = voice;
@@ -52,8 +113,8 @@ export function speakBreath(text, { interrupt = true } = {}) {
 }
 
 export function stopBreathVoice() {
-  if (!synth) return;
-  try { synth.cancel(); } catch { /* ignore */ }
+  stopClip();
+  try { synth?.cancel(); } catch { /* ignore */ }
 }
 
 const CUE_WORDS = { INHALE: 'Breathe in', HOLD: 'Hold', EXHALE: 'Breathe out' };
@@ -65,7 +126,7 @@ const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'sev
 // elapsedMs lets the guide join a phase that is already under way and stay
 // in step with the timer.
 export function guidePhase(phaseName, duration, mode, elapsedMs = 0) {
-  if (!synth || mode === 'off') return () => {};
+  if (!hasBreathVoice() || mode === 'off') return () => {};
   const timers = [];
   const joinedLate = elapsedMs > 400;
   if (mode === 'counts') {
