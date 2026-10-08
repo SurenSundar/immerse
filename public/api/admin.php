@@ -211,14 +211,14 @@ switch ($action) {
 
   case 'books':
     if (!mm_signed_in()) mm_fail(401, 'Please sign in.');
-    $data = mm_read_json('books.json');
+    $data = mm_live_books();
     mm_json(200, ['ok' => true, 'books' => $data['books'] ?? null, 'updatedAt' => $data['updatedAt'] ?? null]);
 
   case 'save':
     if ($method !== 'POST') mm_fail(405, 'Method not allowed.');
     mm_require_signed_in_write();
     $b = mm_body();
-    $current = mm_read_json('books.json');
+    $current = mm_live_books();
     $currentAt = $current['updatedAt'] ?? null;
     if (($b['baseUpdatedAt'] ?? null) !== $currentAt) {
       mm_fail(409, 'The list was changed somewhere else (another tab or device). Reload to get the latest, then redo your edits.', ['updatedAt' => $currentAt]);
@@ -226,8 +226,8 @@ switch ($action) {
     [$books, $errors] = mm_clean_books($b['books'] ?? null);
     if ($errors) mm_fail(422, 'Some books need fixing before saving.', ['errors' => array_slice($errors, 0, 20)]);
 
-    // Keep the previous version as a dated backup
-    if (is_array($current)) {
+    // Keep the previous version as a dated backup (also one the built-in list replaced)
+    if (is_file(mm_path('books.json'))) {
       $dir = mm_data_dir() . '/backups';
       if (!is_dir($dir)) @mkdir($dir, 0700);
       @copy(mm_path('books.json'), $dir . '/books-' . gmdate('Ymd-His') . '.json');

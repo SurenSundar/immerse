@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   TbLock, TbLogout, TbDeviceFloppy, TbPlus, TbSearch, TbExternalLink, TbPencil,
-  TbTrash, TbDownload, TbUpload, TbKey, TbAlertTriangle, TbCheck, TbX, TbPhoto, TbHistory,
+  TbTrash, TbDownload, TbUpload, TbKey, TbAlertTriangle, TbCheck, TbX, TbPhoto, TbHistory, TbRestore,
 } from 'react-icons/tb';
-import { LIBRARY_BOOKS, coverSrc, isPlaceholderLink, withBuiltInCovers } from '../utils/libraryBooks';
+import { LIBRARY_BOOKS, amazonSearchLink, coverSrc, isPlaceholderLink, withBuiltInCovers } from '../utils/libraryBooks';
 import './Admin.css';
 
 // ── API ────────────────────────────────────────────────────────────────────
@@ -51,16 +51,14 @@ function uniqueId(base, taken) {
   return id;
 }
 
-const amazonSearch = (b) => `https://www.amazon.com/s?k=${encodeURIComponent(`${b.title} ${b.author}${b.type === 'audio' ? ' audiobook' : ''}`.trim())}`;
-
-/** 'none' | 'invalid' | 'search' (plain store search) | 'affiliate' */
+/** 'none' | 'invalid' | 'search' (Amazon link without your tag) | 'affiliate' */
 function linkState(url) {
   const u = url?.trim();
   if (!u) return 'none';
   try { if (new URL(u).protocol !== 'https:') return 'invalid'; } catch { return 'invalid'; }
   return isPlaceholderLink(u) ? 'search' : 'affiliate';
 }
-const LINK_LABELS = { none: 'No link', invalid: 'Check link', search: 'Search link', affiliate: 'Affiliate' };
+const LINK_LABELS = { none: 'No link', invalid: 'Check link', search: 'No tag', affiliate: 'Affiliate' };
 
 /** Mirrors the server's checks so problems show up before saving. */
 function problemsFor(book, idCounts) {
@@ -372,6 +370,16 @@ function Editor({ session, setSession, onSignedOut }) {
     }
   };
 
+  // Put the list that ships with the site into the editor; Save makes it live
+  const loadBuiltIn = () => {
+    if (!window.confirm(`Replace the list in the editor with the ${LIBRARY_BOOKS.length} books built into the site? Nothing changes on the site until you press Save.`)) return;
+    const keyById = new Map(books.map((b) => [b.id, b._k]));
+    setBooks(LIBRARY_BOOKS.map((b) => (keyById.has(b.id) ? { ...b, _k: keyById.get(b.id) } : withKey(b))));
+    setShowBackups(false);
+    setLinkFilter('all');
+    setNotice({ kind: 'ok', text: `Loaded the built-in list (${LIBRARY_BOOKS.length} books). Review it, then press Save to make it live.` });
+  };
+
   const save = async () => {
     setNotice(null);
     if (problems.size) {
@@ -492,7 +500,7 @@ function Editor({ session, setSession, onSignedOut }) {
       {!onServer && (
         <div className="adm-banner">
           <TbAlertTriangle size={18} />
-          <span>Nothing saved on the server yet, so the site shows its built-in list. Press <b>Save</b> once to make this list live.</span>
+          <span>The site is showing its built-in list. Press <b>Save</b> once to make this list live and editable here.</span>
         </div>
       )}
 
@@ -515,6 +523,7 @@ function Editor({ session, setSession, onSignedOut }) {
           <button className="mm-btn mm-btn--sm" onClick={exportCsv}><TbDownload size={16} /> Export CSV</button>
           <button className="mm-btn mm-btn--sm" onClick={() => fileRef.current?.click()}><TbUpload size={16} /> Import CSV</button>
           <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { importCsv(e.target.files?.[0]); e.target.value = ''; }} />
+          <button className="mm-btn mm-btn--sm" onClick={loadBuiltIn}><TbRestore size={16} /> Use built-in list</button>
           <button className="mm-btn mm-btn--primary mm-btn--sm" onClick={save} disabled={saving || (!dirty && onServer)}>
             <TbDeviceFloppy size={16} /> {saving ? 'Saving…' : 'Save'}
           </button>
@@ -686,7 +695,7 @@ function BookRow({ book, open, problems, changed, onToggle, onChange, onRemove, 
           </label>
           <div className="adm-field adm-field--wide adm-edit__tools">
             <span>Link tools</span>
-            <button type="button" className="mm-btn mm-btn--sm" onClick={() => onChange({ buyLink: amazonSearch(book) })} disabled={!book.title}>
+            <button type="button" className="mm-btn mm-btn--sm" onClick={() => onChange({ buyLink: amazonSearchLink(book) })} disabled={!book.title}>
               Reset to Amazon search
             </button>
           </div>

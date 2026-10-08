@@ -4,8 +4,8 @@
 define('MM_API', true);
 require __DIR__ . '/_lib.php';
 
-$data = mm_read_json('books.json');
-$books = is_array($data['books'] ?? null) ? $data['books'] : [];
+$data = mm_live_books();
+$books = $data['books'] ?? [];
 $lastmod = substr((string) ($data['updatedAt'] ?? gmdate('c')), 0, 10);
 
 header('Content-Type: application/xml; charset=utf-8');

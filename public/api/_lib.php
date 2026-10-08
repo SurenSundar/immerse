@@ -65,6 +65,20 @@ function mm_fail(int $status, string $message, array $extra = []): void {
   mm_json($status, ['ok' => false, 'error' => $message] + $extra);
 }
 
+// ── Live list ──────────────────────────────────────────────────────────────
+// When the built-in list (src/data/library.json) is replaced, set this to that time:
+// a list saved from /admin before then is ignored, so the new built-in list shows.
+// The old file stays and becomes a backup on the next save.
+const MM_BUILT_IN_SINCE = '2026-10-08T17:25:00+00:00';
+
+/** The list saved from /admin, or null when there is none or the built-in list is newer. */
+function mm_live_books(): ?array {
+  $data = mm_read_json('books.json');
+  if (!is_array($data) || !is_array($data['books'] ?? null)) return null;
+  if ((strtotime((string) ($data['updatedAt'] ?? '')) ?: 0) < strtotime(MM_BUILT_IN_SINCE)) return null;
+  return $data;
+}
+
 // ── Book validation ────────────────────────────────────────────────────────
 const MM_MAX_BOOKS = 2000;
 const MM_DEFAULT_COVER = 'linear-gradient(160deg, #3b4a7a, #1d2647)';

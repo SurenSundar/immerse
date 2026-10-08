@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') mm_fail(405, 'Method not allowed.');
 header('Access-Control-Allow-Origin: *');
 header('Cache-Control: public, max-age=60');
 
-$data = mm_read_json('books.json');
-if (!is_array($data) || !isset($data['books'])) { http_response_code(204); exit; }
+$data = mm_live_books();
+if (!$data) { http_response_code(204); exit; }
 
 mm_json(200, ['ok' => true, 'updatedAt' => $data['updatedAt'] ?? null, 'books' => $data['books']]);

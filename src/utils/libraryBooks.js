@@ -16,8 +16,22 @@ const isNativeApp = typeof window !== 'undefined' && (
 );
 const API_ORIGIN = isNativeApp ? 'https://monkeymind.online' : '';
 
-/** True for a missing link or a plain Amazon search (i.e. not yet an affiliate link). */
-export const isPlaceholderLink = (url) => !url || /amazon\.[a-z.]+\/s\?k=/i.test(url);
+// Amazon Associates (amazon.in). A link earns only when it carries this tag.
+export const AFFILIATE_TAG = 'learnbooks0a-21';
+
+/** amazon.in search for the book, tagged so purchases are credited. */
+export const amazonSearchLink = (b) => {
+  const q = `${b.title} ${b.author}${b.type === 'audio' ? ' audiobook' : ''}`.trim();
+  return `https://www.amazon.in/s?k=${encodeURIComponent(q)}&tag=${AFFILIATE_TAG}`;
+};
+
+/**
+ * True for a missing link, or an Amazon link with no tracking tag (a plain search,
+ * or an a.co link from Amazon's Share button): neither earns anything.
+ * SiteStripe short links (amzn.to, link.amazon) carry the tag after the redirect.
+ */
+export const isPlaceholderLink = (url) => !url
+  || (/^https?:\/\/([a-z0-9-]+\.)*(amazon\.[a-z.]+|a\.co)\//i.test(url) && !/[?&]tag=/i.test(url));
 
 /** Image URL for a book's cover (works in the app too), or '' when it has none. */
 export const coverSrc = (book) => {
