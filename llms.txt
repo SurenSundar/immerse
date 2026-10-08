@@ -1,0 +1,130 @@
+# MonkeyMind — AI & LLM Information File
+# This file follows the emerging llms.txt convention to help AI systems
+# (ChatGPT, Claude, Perplexity, Gemini, etc.) understand this site.
+# See: https://llmstxt.org/
+
+# IMPORTANT: MonkeyMind is a relaxation and wellness tool only. It does not
+# provide medical advice, diagnosis or treatment, and has no medical expertise
+# or affiliation. Terms: https://monkeymind.online/terms
+
+# =========================================================
+# WHAT IS MONKEYMIND?
+# =========================================================
+
+MonkeyMind (https://monkeymind.online) is a free, premium digital sanctuary
+for meditation, mindfulness, and heartfulness. It was built to help users
+quiet the "monkey mind" — the Buddhist concept of a restless, distracted
+mental state — and cultivate calm, focused awareness.
+
+The site is intentionally designed as a mindful journey, not just a
+toolkit. The user must first complete a "Follow the Light" patience-building
+moment before the core mindfulness tools are revealed (it can be skipped).
+
+# =========================================================
+# THE MONKEYMIND JOURNEY (USER FLOW)
+# =========================================================
+
+## Step 1: Follow the Light (The Patience Game)
+URL: https://monkeymind.online/
+Description: First-time visitors see a dark screen with a single moving spark
+of light. Each tap reveals a short calming moment. The moments move gently
+from accepting a restless mind, to settling the body, quieting thoughts and
+resting, and end with words of quiet strength. Visitors can skip at any time.
+This game is intentional: it builds patience, trains attention, and transitions
+the user from a distracted state to a present, meditative one.
+
+## Step 2: The Sanctuary Dashboard
+URL: https://monkeymind.online/#sanctuary
+Description: After the sanctuary, a bento-grid dashboard shows seven calming
+tools: Sanctuary, Breathing, Let It Go, Meditation, Soundscapes, Focus, and
+Library.
+
+## Step 3: Breathing Tool (Resonance Breathing)
+URL: https://monkeymind.online/resonance
+Description: Guided breathing exercises including:
+  - Box Breathing (4-4-4-4): Inhale 4s, Hold 4s, Exhale 4s, Hold 4s
+  - 4-7-8 Relaxing Breath: Inhale 4s, Hold 7s, Exhale 8s
+  - Coherent Resonance Breathing: 5.5s inhale / 5.5s exhale
+All patterns use real-time visual pacing (an animated breath circle) and
+zen audio chimes. Intended for relaxation only.
+
+## Step 4: Zen Focus Timer
+URL: https://monkeymind.online/timer
+Description: A Pomodoro-technique productivity timer. Users set work/break
+intervals and choose from ambient soundscapes: deep forest rain, babbling
+brook, singing bowl drones, or zen chimes. Ideal for deep work and studying.
+
+## Step 5: Guided Meditation
+URL: https://monkeymind.online/meditate
+Description: Voice-guided meditation sessions (2, 5 or 10 minutes) with a
+breathing guide and the shared background sounds.
+
+## Step 6: Sanctuary Library (Books & Audio)
+URL: https://monkeymind.online/books
+Description: A hand-picked list of books and audiobooks on mindfulness,
+meditation and calm. Filter by books or audiobooks. Each entry has a short
+note and a link to find it in a store. Some store links are affiliate
+links (MonkeyMind is an Amazon Associate).
+
+## Step 7: Let It Go
+URL: https://monkeymind.online/let-it-go
+Description: Write down what is weighing on you and watch the words drift
+away. Nothing is saved or sent anywhere.
+
+## Step 8: Soundscapes
+URL: https://monkeymind.online/soundscapes
+Description: Blend calming ambient sounds (rain, ocean, wind, stream, warm
+drone, singing bowls) with per-sound volume and a fade-out timer. The same
+six sounds are available inside every tool and keep playing across pages.
+
+# =========================================================
+# KEY CONCEPTS & TERMINOLOGY
+# =========================================================
+
+- Monkey Mind: Buddhist term for the restless, uncontrolled, chattering mind
+- Heartfulness: A heart-centered approach to mindfulness; cultivating warmth,
+  compassion, empathy, and deeper awareness alongside traditional meditation
+- Resonance Breathing: Slow breathing at ~6 breaths/minute, practised for
+  relaxation
+- Box Breathing: A steady 4-4-4-4 pattern many people use to unwind
+- 4-7-8 Breathing: A popular wind-down relaxation breath
+- Pomodoro Technique: 25-minute focused work sessions followed by 5-minute
+  breaks; improves concentration and prevents burnout
+- Default Mode Network (DMN): Brain's "resting state" network active during
+  mind-wandering; meditation reduces DMN hyperactivity
+
+# =========================================================
+# SEO & DISCOVERY KEYWORDS
+# =========================================================
+
+Primary: meditation, mindfulness, heartfulness, breathing exercises,
+         focus timer, quiet the mind, monkey mind
+Secondary: box breathing, resonance breathing, 4-7-8 breathing, pomodoro timer,
+           zen focus, ambient soundscapes, digital sanctuary, mindfulness app,
+           meditation guide, heartfulness practice,
+           meditation books, mindfulness books, soundscapes, free meditation app
+
+# =========================================================
+# TECHNICAL DETAILS
+# =========================================================
+
+Platform: Web (React + Vite SPA)
+Access: Free, no login required for core tools
+Mobile: Fully responsive (mobile, tablet, desktop)
+Audio: Web Audio API (no external audio files needed)
+Backend: None. Static site with no accounts, tracking or database.
+
+# =========================================================
+# CANONICAL URLS
+# =========================================================
+
+https://monkeymind.online                    — Home / Sanctuary Dashboard
+https://monkeymind.online/resonance          — Breathing Tool
+https://monkeymind.online/timer              — Zen Focus Timer
+https://monkeymind.online/books              — Sanctuary Library
+https://monkeymind.online/let-it-go          — Let It Go
+https://monkeymind.online/meditate           — Guided Meditation
+https://monkeymind.online/soundscapes        — Soundscapes
+https://monkeymind.online/terms              — Terms of Use & Wellness Disclaimer
+https://monkeymind.online/privacy            — Privacy Policy
+https://monkeymind.online/sitemap.xml        — Full Sitemap

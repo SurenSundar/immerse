@@ -1,0 +1,70 @@
+# Robots.txt for MonkeyMind — https://monkeymind.online
+# Updated to invite all search engines and AI crawlers
+
+User-agent: *
+Allow: /
+Allow: /sitemap.xml
+Allow: /llms.txt
+Allow: /api/sitemap.php
+Allow: /api/cover.php
+Disallow: /admin
+Disallow: /api/
+
+# Crawl-delay for polite crawling
+Crawl-delay: 2
+
+# ---- AI Search Crawlers (explicitly allowed) ----
+
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: FacebookBot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: PetalBot
+Allow: /
+
+User-agent: YouBot
+Allow: /
+
+# ---- Sitemaps ----
+
+Sitemap: https://monkeymind.online/sitemap.xml
+Sitemap: https://monkeymind.online/api/sitemap.php
+
+# ---- AI / LLM Machine-Readable Context ----
+# This file explains the site to AI systems:
+# https://monkeymind.online/llms.txt
